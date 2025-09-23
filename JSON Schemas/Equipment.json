@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Equipment",
+  "type": "object",
+  "properties": {
+    "EquipmentID": {
+      "type": "number"
+    },
+    "EquipmentType": {
+      "type": "string"
+    },
+    "EquipmentDescription": {
+      "type": "string"
+    },
+    "RequiredQualificationID": {
+      "type": "number"
+    },
+    "LastInspectionDate": {
+      "type": "string"
+    },
+    "NextInspectionDue": {
+      "type": "string"
+    },
+    "EquipmentStatus": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "EquipmentID",
+    "EquipmentType",
+    "EquipmentDescription",
+    "RequiredQualificationID",
+    "LastInspectionDate",
+    "NextInspectionDue",
+    "EquipmentStatus"
+  ]
+}

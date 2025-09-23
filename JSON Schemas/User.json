@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "User",
+  "type": "object",
+  "properties": {
+    "UserID": {
+      "type": "number"
+    },
+    "FirstName": {
+      "type": "string"
+    },
+    "LastName": {
+      "type": "string"
+    },
+    "Email": {
+      "type": "string"
+    },
+    "PhoneNumber": {
+      "type": "string"
+    },
+    "Role": {
+      "type": "string"
+    },
+    "StartDate": {
+      "type": "string"
+    },
+    "InductionStatus": {
+        "type": "string"
+    },
+    "Qualifications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "QualificationID": {
+            "type": "number"
+          },
+          "QualificationName": {
+            "type": "string"
+          },
+          "IssueDate": {
+            "type": "string"
+          },
+          "ExpiryDate": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "QualificationID",
+          "QualificationName",
+          "IssueDate",
+          "ExpiryDate"
+        ]
+      }
+    }
+  },
+  "required": [
+    "UserID",
+    "FirstName",
+    "LastName",
+    "Email",
+    "PhoneNumber",
+    "Role",
+    "StartDate",
+    "Qualifications"
+  ]
+}
