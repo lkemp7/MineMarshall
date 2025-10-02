@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% load static %}
+{% block content %}
+<div class="max-w-2xl mx-auto mt-6">
+  <h1 class="text-2xl font-bold mb-4">My account</h1>
+
+  {% if messages %}
+    <div class="space-y-2 mb-4">
+      {% for message in messages %}
+        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <form method="post" class="space-y-4 bg-base-100 p-6 rounded shadow-sm">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+
+    <div>
+      <label class="label"><span class="label-text">First name</span></label>
+      {{ form.first_name }}
+      {% for err in form.first_name.errors %}
+        <p class="text-sm text-error mt-1">{{ err }}</p>
+      {% endfor %}
+    </div>
+
+    <div>
+      <label class="label"><span class="label-text">Last name</span></label>
+      {{ form.last_name }}
+      {% for err in form.last_name.errors %}
+        <p class="text-sm text-error mt-1">{{ err }}</p>
+      {% endfor %}
+    </div>
+
+    <div>
+      <label class="label"><span class="label-text">Email</span></label>
+      {{ form.email }}
+      {% for err in form.email.errors %}
+        <p class="text-sm text-error mt-1">{{ err }}</p>
+      {% endfor %}
+    </div>
+
+    <div>
+      <label class="label"><span class="label-text">Phone</span></label>
+      {{ form.phone_number }}
+      {% for err in form.phone_number.errors %}
+        <p class="text-sm text-error mt-1">{{ err }}</p>
+      {% endfor %}
+    </div>
+
+    <div class="flex gap-2">
+      <button type="submit"
+              class="btn text-white"
+              style="background-color:#F79327; border-color:#F79327;">
+          Save changes
+      </button>
+      <a href="/" class="btn btn-ghost">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
