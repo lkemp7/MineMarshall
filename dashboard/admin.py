@@ -1,4 +1,4 @@
 from django.contrib import admin
-from dashboard.models import Contractor
+from accounts.models import CustomUser
 
-admin.site.register(Contractor)
+admin.site.register(CustomUser)

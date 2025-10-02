@@ -1,10 +1,9 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from dashboard.models import Contractor
+from accounts.models import CustomUser
 
 @login_required
-
 def dashboard(request):
-    contractors = Contractor.objects.all()
-    context = {'contractors': contractors}
+    users = CustomUser.objects.all()
+    context = {'users': users}
     return render(request, 'dashboard.html', context)
