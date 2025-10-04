@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<nav class="tabs tabs-boxed mb-6">
+  <a class="tab" href="{% url 'dashboard' %}">Dashboard</a>
+
+  {% if request.user.email|lower == 'admin@minemarshall.com' %}
+  <a class="tab" href="{% url 'create_form' %}">Create Forms</a>
+  {% endif %}
+
+  <a class="tab tab-active" href="{% url 'my_forms' %}">My Forms</a>
+</nav>
+
+<h1 class="text-4xl text-[#F79327] mb-4">My Forms</h1>
+
+{% if forms %}
+<ul class="menu bg-base-200 w-full max-w-3xl rounded-box">
+  {% for f in forms %}
+  <li>
+    <a href="{% url 'view_form' f.pk %}">
+      <span class="font-semibold">{{ f.title }}</span>
+      <span class="opacity-60 text-sm">— {{ f.created_at|date:"Y-m-d H:i" }}</span>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="opacity-70">No forms yet. {% if request.user.email|lower == 'admin@minemarshall.com' %}You can create one from the “Create Forms” tab.{% endif %}</p>
+{% endif %}
+{% endblock %}

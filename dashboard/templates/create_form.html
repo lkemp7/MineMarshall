@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<nav class="tabs tabs-boxed mb-6">
+  <a class="tab" href="{% url 'dashboard' %}">Dashboard</a>
+
+  {% if request.user.email|lower == 'admin@minemarshall.com' %}
+  <a class="tab tab-active" href="{% url 'create_form' %}">Create Forms</a>
+  {% endif %}
+
+  <a class="tab" href="{% url 'my_forms' %}">My Forms</a>
+</nav>
+
+<h1 class="text-4xl text-[#F79327] mb-4">Create Form</h1>
+
+<form method="post" class="space-y-4">
+  {% csrf_token %}
+
+  <div class="form-control">
+    <label class="label">
+      <span class="label-text">Form Title</span>
+    </label>
+    <input name="title" type="text" placeholder="Untitled Form" class="input input-bordered w-full max-w-xl" />
+  </div>
+
+  <div class="form-control">
+    <label class="label">
+      <span class="label-text">Number of questions</span>
+    </label>
+    <input id="num_questions" name="num_questions" type="number" min="0" value="0" class="input input-bordered w-40" />
+    <small class="text-sm opacity-70">Set a number and fields will appear below.</small>
+  </div>
+
+  <div id="questions_container" class="space-y-3 mt-4"></div>
+
+  <button type="submit" class="btn btn-primary">Finish Form</button>
+</form>
+
+<script>
+  const numInput = document.getElementById('num_questions');
+  const container = document.getElementById('questions_container');
+
+  function renderQuestionFields(n) {
+    container.innerHTML = '';
+    const count = Math.max(0, parseInt(n || '0', 10));
+    for (let i = 1; i <= count; i++) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'form-control';
+      wrapper.innerHTML = `
+        <label class="label">
+          <span class="label-text">Question ${i}</span>
+        </label>
+        <input name="question_${i}" type="text" class="input input-bordered w-full max-w-3xl" placeholder="Enter question ${i}" />
+      `;
+      container.appendChild(wrapper);
+    }
+  }
+
+  numInput.addEventListener('input', (e) => renderQuestionFields(e.target.value));
+  // Initial render
+  renderQuestionFields(numInput.value);
+</script>
+{% endblock %}
