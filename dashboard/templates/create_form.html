@@ -1,16 +1,6 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
 {% block content %}
-<nav class="tabs tabs-boxed mb-6">
-  <a class="tab" href="{% url 'dashboard' %}">Dashboard</a>
-
-  {% if request.user.email|lower == 'admin@minemarshall.com' %}
-  <a class="tab tab-active" href="{% url 'create_form' %}">Create Forms</a>
-  {% endif %}
-
-  <a class="tab" href="{% url 'my_forms' %}">My Forms</a>
-</nav>
-
 <h1 class="text-4xl text-[#F79327] mb-4">Create Form</h1>
 
 <form method="post" class="space-y-4">
@@ -57,7 +47,6 @@
   }
 
   numInput.addEventListener('input', (e) => renderQuestionFields(e.target.value));
-  // Initial render
   renderQuestionFields(numInput.value);
 </script>
 {% endblock %}

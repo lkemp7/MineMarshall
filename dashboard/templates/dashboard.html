@@ -1,24 +1,8 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
 {% block content %}
-<nav class="tabs tabs-boxed mb-6">
-  <a class="tab {% if request.resolver_match.url_name == 'dashboard' %}tab-active{% endif %}" href="{% url 'dashboard' %}">
-    Dashboard
-  </a>
-
-  {% if request.user.email|lower == 'admin@minemarshall.com' %}
-  <a class="tab {% if request.resolver_match.url_name == 'create_form' %}tab-active{% endif %}" href="{% url 'create_form' %}">
-    Create Forms
-  </a>
-  {% endif %}
-
-  <a class="tab {% if request.resolver_match.url_name == 'my_forms' %}tab-active{% endif %}" href="{% url 'my_forms' %}">
-    My Forms
-  </a>
-</nav>
-
 <div>
   <h1 class="text-4xl text-[#F79327] mb-4">Dashboard</h1>
-  {% include 'contractor-list.html' %}
+  
 </div>
 {% endblock %}
