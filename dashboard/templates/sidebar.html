@@ -9,5 +9,18 @@
        class="btn w-full justify-start {% if current == 'personnel' %}btn-primary{% else %}btn-ghost{% endif %}">
       Personnel
     </a>
+
+    {% if request.user.email|lower == 'admin@minemarshall.com' %}
+      <a href="{% url 'create_form' %}"
+         class="btn w-full justify-start {% if current == 'create_form' %}btn-primary{% else %}btn-ghost{% endif %}">
+        Create Forms
+      </a>
+    {% endif %}
+
+    <a href="{% url 'my_forms' %}"
+       class="btn w-full justify-start {% if current == 'my_forms' %}btn-primary{% else %}btn-ghost{% endif %}">
+      My Forms
+    </a>
+
   {% endwith %}
 </nav>
