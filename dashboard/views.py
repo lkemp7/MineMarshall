@@ -11,6 +11,7 @@ def dashboard(request):
     context = {'users': users}
     return render(request, 'dashboard.html', context)
 
+
 @login_required
 def create_form(request):
     # Only allow this exact user to create forms for now
@@ -49,3 +50,9 @@ def my_forms(request):
 def view_form(request, pk):
     form_obj = get_object_or_404(Form, pk=pk, created_by=request.user)
     return render(request, "form_detail.html", {"form": form_obj})
+
+
+@login_required
+def personnel(request):
+    users = CustomUser.objects.all().order_by("first_name", "last_name")
+    return render(request, 'personnel.html', {"users": users})
