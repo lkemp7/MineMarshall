@@ -1,0 +1,13 @@
+<nav class="space-y-2">
+  {% with current=request.resolver_match.url_name %}
+    <a href="{% url 'dashboard' %}"
+       class="btn w-full justify-start {% if current == 'dashboard' %}btn-primary{% else %}btn-ghost{% endif %}">
+      Dashboard
+    </a>
+
+    <a href="{% url 'personnel' %}"
+       class="btn w-full justify-start {% if current == 'personnel' %}btn-primary{% else %}btn-ghost{% endif %}">
+      Personnel
+    </a>
+  {% endwith %}
+</nav>
