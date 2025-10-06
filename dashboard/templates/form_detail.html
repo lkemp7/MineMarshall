@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<nav class="tabs tabs-boxed mb-6">
+  <a class="tab" href="{% url 'dashboard' %}">Dashboard</a>
+
+  {% if request.user.email|lower == 'admin@minemarshall.com' %}
+  <a class="tab" href="{% url 'create_form' %}">Create Forms</a>
+  {% endif %}
+
+  <a class="tab" href="{% url 'my_forms' %}">My Forms</a>
+</nav>
+
+<h1 class="text-4xl text-[#F79327] mb-4">{{ form.title }}</h1>
+
+{% if form.questions.all %}
+<ol class="list-decimal ml-6 space-y-2">
+  {% for q in form.questions.all %}
+  <li>{{ q.text }}</li>
+  {% endfor %}
+</ol>
+{% else %}
+<p class="opacity-70">This form has no questions.</p>
+{% endif %}
+{% endblock %}
