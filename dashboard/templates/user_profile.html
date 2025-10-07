@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block header_extra %}
+  <div class="absolute z-20 left-72 sm:left-80 bottom-[-8rem]">
+    <div class="w-40 h-40 sm:w-60 sm:h-60
+                rounded-full ring ring-[#F79327] ring-offset-base-100 ring-offset-2
+                bg-base-200 overflow-hidden grid place-items-center leading-none">
+      <!-- Default profile icon -->
+      <svg xmlns="http://www.w3.org/2000/svg"
+           viewBox="0 0 24 24"
+           class="w-16 h-16 sm:w-24 sm:h-24 opacity-70 block"
+           fill="currentColor" aria-hidden="true">
+        <path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5Z"/>
+      </svg>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+  <div class="pt-[calc(8rem+1rem)]">
+    <h1 class="text-4xl text-[#F79327] mb-2">
+      {{ user_obj.first_name }} {{ user_obj.last_name }}
+    </h1>
+    <p class="opacity-70 mb-6">{{ user_obj.email }}</p>
+
+    <div class="grid gap-4 max-w-3xl">
+      <div class="card bg-base-200 p-4">
+        <div class="mb-2"><span class="opacity-70">Active:</span> {{ user_obj.is_active|yesno:"Yes,No" }}</div>
+        <div class="mb-2"><span class="opacity-70">Joined:</span> {{ user_obj.date_joined|date:"Y-m-d H:i" }}</div>
+      </div>
+
+      <a href="{% url 'personnel' %}" class="btn btn-ghost">← Back to Personnel</a>
+    </div>
+  </div>
+{% endblock %}

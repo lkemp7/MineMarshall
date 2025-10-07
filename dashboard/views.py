@@ -56,3 +56,9 @@ def view_form(request, pk):
 def personnel(request):
     users = CustomUser.objects.all().order_by("first_name", "last_name")
     return render(request, 'personnel.html', {"users": users})
+
+
+@login_required
+def user_profile(request, user_id):
+    user_obj = get_object_or_404(CustomUser, pk=user_id)
+    return render(request, "user_profile.html", {"user_obj": user_obj})

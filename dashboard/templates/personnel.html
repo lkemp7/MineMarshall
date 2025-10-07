@@ -16,7 +16,11 @@
       <tbody>
         {% for x in users %}
         <tr>
-          <td>{{ x.first_name }}</td>
+          <td>
+            <a href="{% url 'user_profile' x.id %}" class="link">
+              {{ x.first_name }}
+            </a>
+          </td>
           <td>{{ x.last_name }}</td>
           <td>{{ x.email }}</td>
           <td>{{ x.phone_number }}</td>
