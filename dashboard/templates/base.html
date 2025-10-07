@@ -26,18 +26,20 @@
 </head>
 <body class="min-h-screen flex flex-col">
   
-  <header class="flex items-center p-4 border-b border-base-300"">
+  <!-- Make header relative so profile pages can position content inside it -->
+  <header class="relative flex items-center p-4 border-b border-base-300">
+    {% block header_extra %}{% endblock %}
     <img src="{% static 'Orefox_logo.png' %}" alt="Orefox Logo" class="w-40 h-auto object-contain ml-8">
   </header>
 
   <div class="flex flex-1 min-h-0">
-  <aside class="w-64 bg-base-200 p-4 sticky top-24 self-start">
-    {% include "sidebar.html" %}
-  </aside>
-  <div class="w-px bg-base-300"></div>
-  <main class="flex-1 p-6 overflow-auto">
-    {% block content %}{% endblock %}
-  </main>
-</div>
+    <aside class="w-64 bg-base-200 p-4 sticky top-24 self-start">
+      {% include "sidebar.html" %}
+    </aside>
+    <div class="w-px bg-base-300"></div>
+    <main class="flex-1 p-6 overflow-auto">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
 </body>
 </html>
