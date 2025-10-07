@@ -22,5 +22,10 @@
       My Forms
     </a>
 
+    <a href="{% url 'metrics' %}"
+        class="btn w-full justify-start {% if request.resolver_match.url_name == 'metrics' %}btn-primary{% else %}btn-ghost{% endif %}">
+      Metrics
+    </a>
+
   {% endwith %}
 </nav>

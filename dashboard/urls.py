@@ -11,5 +11,6 @@ urlpatterns = [
 
     # Personnel
     path('personnel/', views.personnel, name='personnel'),
-    path("personnel/<int:user_id>/", views.user_profile, name="user_profile")
+    path("personnel/<int:user_id>/", views.user_profile, name="user_profile"),
+    path("metrics/", views.metrics, name="metrics")
 ]

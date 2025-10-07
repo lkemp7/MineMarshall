@@ -62,3 +62,7 @@ def personnel(request):
 def user_profile(request, user_id):
     user_obj = get_object_or_404(CustomUser, pk=user_id)
     return render(request, "user_profile.html", {"user_obj": user_obj})
+
+@login_required
+def metrics(request):
+    return render(request, "metrics.html")
