@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="text-3xl text-[#F79327] mb-4">Delete Form</h1>
+
+<div class="card bg-base-200 mb-6">
+  <div class="card-body">
+    <h2 class="card-title">Are you sure you want to delete “{{ form_obj.title }}”?</h2>
+    <p class="opacity-80">This action cannot be undone.</p>
+
+    <ul class="mt-3 list-disc ml-6">
+      <li><strong>{{ questions_count }}</strong> question{{ questions_count|pluralize }}</li>
+      <li><strong>{{ assignments_count }}</strong> assignment{{ assignments_count|pluralize }}</li>
+      <li><strong>{{ submissions_count }}</strong> submission{{ submissions_count|pluralize }}</li>
+    </ul>
+
+    <div class="mt-6 flex gap-2">
+      <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-error">Yes, delete form</button>
+      </form>
+      <a href="{% url 'view_form' form_obj.pk %}" class="btn">Cancel</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

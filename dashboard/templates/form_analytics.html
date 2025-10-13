@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="text-3xl text-[#F79327] mb-4">Form Data — “{{ form_obj.title }}”</h1>
+
+<div class="stats shadow mb-6">
+  <div class="stat">
+    <div class="stat-title">Total Assigned</div>
+    <div class="stat-value">{{ total_assigned }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-title">Completed</div>
+    <div class="stat-value">{{ completed_count }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-title">Not Completed</div>
+    <div class="stat-value">{{ not_completed_count }}</div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <div>
+    <h2 class="text-xl font-semibold mb-2">Completed</h2>
+    <ul class="menu bg-base-200 rounded-box">
+      {% for a in completed_assignments %}
+        <li class="px-4 py-2">{{ a.user.first_name }} {{ a.user.last_name }} — {{ a.user.email }}</li>
+      {% empty %}
+        <li class="px-4 py-2 opacity-70">None yet</li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div>
+    <h2 class="text-xl font-semibold mb-2">Not Completed</h2>
+    <ul class="menu bg-base-200 rounded-box">
+      {% for a in not_completed_assignments %}
+        <li class="px-4 py-2">{{ a.user.first_name }} {{ a.user.last_name }} — {{ a.user.email }}</li>
+      {% empty %}
+        <li class="px-4 py-2 opacity-70">Everyone’s done 🎉</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

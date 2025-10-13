@@ -6,11 +6,18 @@
 {% if forms %}
 <ul class="menu bg-base-200 w-full max-w-3xl rounded-box">
   {% for f in forms %}
-  <li>
-    <a href="{% url 'view_form' f.pk %}">
+  <li class="flex items-center justify-between">
+    <a class="flex-1" href="{% url 'view_form' f.pk %}">
       <span class="font-semibold">{{ f.title }}</span>
       <span class="opacity-60 text-sm">— {{ f.created_at|date:"Y-m-d H:i" }}</span>
     </a>
+
+    {% if request.user.role == 'admin' %}
+      <div class="flex gap-2">
+        <a class="btn btn-xs" href="{% url 'assign_form' f.pk %}">Assign</a>
+        <a class="btn btn-xs" href="{% url 'form_analytics' f.pk %}">View Data</a>
+      </div>
+    {% endif %}
   </li>
   {% endfor %}
 </ul>

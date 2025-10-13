@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load answer_tags %}
 
 {% block content %}
 <nav class="tabs tabs-boxed mb-6">
@@ -13,13 +14,111 @@
 
 <h1 class="text-4xl text-[#F79327] mb-4">{{ form.title }}</h1>
 
-{% if form.questions.all %}
-<ol class="list-decimal ml-6 space-y-2">
-  {% for q in form.questions.all %}
-  <li>{{ q.text }}</li>
-  {% endfor %}
-</ol>
-{% else %}
-<p class="opacity-70">This form has no questions.</p>
+{# Admin / creator controls #}
+{% if request.user.role == 'admin' or is_creator %}
+<div class="mb-4 flex flex-wrap gap-2">
+  {% if request.user.role == 'admin' %}
+    <a href="{% url 'assign_form' form.pk %}" class="btn btn-sm btn-primary">Assign to Users</a>
+    <a href="{% url 'form_analytics' form.pk %}" class="btn btn-sm">View Data</a>
+
+    {# Delete routes to a confirmation screen first; actual delete is POST there #}
+    <a href="{% url 'delete_form' form.pk %}"
+       class="btn btn-sm btn-error"
+       onclick="return confirm('Proceed to delete confirmation for this form?');">
+      Delete
+    </a>
+  {% endif %}
+</div>
 {% endif %}
+
+{# If the user is admin/creator, just show the questions read-only #}
+{% if is_admin or is_creator %}
+  {% if form.questions.all %}
+  <ol class="list-decimal ml-6 space-y-2">
+    {% for q in form.questions.all %}
+    <li>{{ q.text }}</li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p class="opacity-70">This form has no questions.</p>
+  {% endif %}
+
+{# Non-admin assigned users: show a fillable form #}
+{% elif is_assigned %}
+  {% if existing_submission %}
+    <div class="alert alert-info mb-4">
+      <span>You’ve already submitted this form.</span>
+    </div>
+    <ol class="list-decimal ml-6 space-y-2">
+      {% for q in form.questions.all %}
+        {% with ans=existing_submission.answers.all|dictsort:"question_id" %}
+        <li>
+          <div class="font-medium">{{ q.text }}</div>
+          <div class="opacity-80 whitespace-pre-wrap">
+            {{ existing_submission.answers.all|get_answer_for:q.id }}
+          </div>
+        </li>
+        {% endwith %}
+      {% endfor %}
+    </ol>
+  {% else %}
+    <form method="post" class="space-y-4 max-w-2xl">
+      {% csrf_token %}
+
+      {% if form.questions.all %}
+        <ol class="list-decimal ml-6 space-y-6">
+          {% for q in form.questions.all %}
+          <li>
+            <div class="label mb-1">
+              <span class="label-text font-medium">{{ q.text }}</span>
+            </div>
+
+            {% if q.question_type == 'text' %}
+              <textarea
+                name="q_{{ q.id }}"
+                class="textarea textarea-bordered w-full"
+                rows="3"
+                placeholder="Type your answer here..."></textarea>
+
+            {% elif q.question_type == 'mcq' %}
+              <div class="space-y-2">
+                {% for opt in q.options %}
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="q_{{ q.id }}" value="{{ opt }}" class="radio">
+                    <span>{{ opt }}</span>
+                  </label>
+                {% empty %}
+                  <p class="opacity-70">No options configured.</p>
+                {% endfor %}
+              </div>
+
+            {% elif q.question_type == 'dropdown' %}
+              <select name="q_{{ q.id }}" class="select select-bordered">
+                <option value="" selected disabled>Choose an option</option>
+                {% for opt in q.options %}
+                  <option value="{{ opt }}">{{ opt }}</option>
+                {% empty %}
+                  <option disabled>No options configured</option>
+                {% endfor %}
+              </select>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <p class="opacity-70">This form has no questions.</p>
+      {% endif %}
+
+      <div class="flex gap-2">
+        <button class="btn btn-primary" type="submit">Submit</button>
+        <a class="btn" href="{% url 'my_forms' %}">Cancel</a>
+      </div>
+    </form>
+  {% endif %}
+
+{# Fallback: no access #}
+{% else %}
+  <p>You don’t have access to fill this form.</p>
+{% endif %}
+
 {% endblock %}

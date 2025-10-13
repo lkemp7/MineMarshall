@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="text-3xl text-[#F79327] mb-4">Assign users to “{{ form_obj.title }}”</h1>
+
+<form method="post" class="space-y-4 max-w-xl">
+  {% csrf_token %}
+
+  <label class="form-control w-full">
+    <div class="label"><span class="label-text">Select users</span></div>
+    <select name="user_ids" multiple size="12" class="select select-bordered w-full">
+      {% for u in available_users %}
+        <option value="{{ u.id }}">
+          {{ u.first_name }} {{ u.last_name }} — {{ u.email }}
+        </option>
+      {% empty %}
+        <option disabled>(All users are already assigned)</option>
+      {% endfor %}
+    </select>
+    <div class="label">
+      <span class="label-text-alt opacity-70">
+        Hold Ctrl/Cmd (or Shift) to select multiple users.
+      </span>
+    </div>
+  </label>
+
+  <div class="flex gap-2">
+    <button class="btn btn-primary" type="submit">Assign</button>
+    <a class="btn" href="{% url 'view_form' form_obj.pk %}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

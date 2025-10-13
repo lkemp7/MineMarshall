@@ -1,52 +1,117 @@
 {% extends "base.html" %}
-
 {% block content %}
 <h1 class="text-4xl text-[#F79327] mb-4">Create Form</h1>
 
-<form method="post" class="space-y-4">
+<form method="post" class="space-y-6">
   {% csrf_token %}
 
-  <div class="form-control">
-    <label class="label">
-      <span class="label-text">Form Title</span>
-    </label>
-    <input name="title" type="text" placeholder="Untitled Form" class="input input-bordered w-full max-w-xl" />
+  <label class="form-control max-w-xl">
+    <div class="label"><span class="label-text">Form title</span></div>
+    <input name="title" type="text" class="input input-bordered" value="{{ prefill_title|default:'' }}" required>
+  </label>
+
+  <div class="flex items-center justify-between">
+    <h2 class="text-2xl font-semibold">Questions</h2>
+    <button type="button" class="btn btn-sm" id="add-q">+ Add question</button>
   </div>
 
-  <div class="form-control">
-    <label class="label">
-      <span class="label-text">Number of questions</span>
-    </label>
-    <input id="num_questions" name="num_questions" type="number" min="0" value="0" class="input input-bordered w-40" />
-    <small class="text-sm opacity-70">Set a number and fields will appear below.</small>
+  <div id="q-list" class="space-y-4"></div>
+
+  <div class="flex gap-2">
+    <button type="submit" class="btn btn-primary">Create</button>
+    <a href="{% url 'dashboard' %}" class="btn">Cancel</a>
   </div>
-
-  <div id="questions_container" class="space-y-3 mt-4"></div>
-
-  <button type="submit" class="btn btn-primary">Finish Form</button>
 </form>
 
-<script>
-  const numInput = document.getElementById('num_questions');
-  const container = document.getElementById('questions_container');
+<template id="q-item-template">
+  <div class="card bg-base-200">
+    <div class="card-body gap-3">
+      <div class="flex items-center justify-between">
+        <span class="font-medium">Question <span class="q-num"></span></span>
+        <button type="button" class="btn btn-xs btn-ghost text-error rm-q">Remove</button>
+      </div>
 
-  function renderQuestionFields(n) {
-    container.innerHTML = '';
-    const count = Math.max(0, parseInt(n || '0', 10));
-    for (let i = 1; i <= count; i++) {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'form-control';
-      wrapper.innerHTML = `
-        <label class="label">
-          <span class="label-text">Question ${i}</span>
+      <label class="form-control">
+        <div class="label"><span class="label-text">Question text</span></div>
+        <input name="q_text[]" class="input input-bordered" placeholder="e.g., What is your role?" required>
+      </label>
+
+      <label class="form-control max-w-xs">
+        <div class="label"><span class="label-text">Question type</span></div>
+        <select name="q_type[]" class="select select-bordered q-type">
+          <option value="text">Open text</option>
+          <option value="mcq">Multiple choice (radio)</option>
+          <option value="dropdown">Dropdown</option>
+        </select>
+      </label>
+
+      <div class="q-opts">
+        <label class="form-control">
+          <div class="label"><span class="label-text">Options (one per line)</span></div>
+          <textarea name="q_opts[]" class="textarea textarea-bordered q-opts-ta" rows="4"
+            placeholder="Option A&#10;Option B&#10;Option C"></textarea>
+          <div class="label">
+            <span class="label-text-alt opacity-70">Only used for Multiple choice / Dropdown.</span>
+          </div>
         </label>
-        <input name="question_${i}" type="text" class="input input-bordered w-full max-w-3xl" placeholder="Enter question ${i}" />
-      `;
-      container.appendChild(wrapper);
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+(function () {
+  const list = document.getElementById('q-list');
+  const tmpl = document.getElementById('q-item-template');
+
+  function renumber() {
+    [...list.querySelectorAll('.q-num')].forEach((el, i) => el.textContent = i + 1);
+  }
+
+  function syncOptsFor(card) {
+    const sel = card.querySelector('.q-type');
+    const optsWrap = card.querySelector('.q-opts');
+    const optsTa = card.querySelector('.q-opts-ta');
+
+    const needsOpts = (sel.value === 'mcq' || sel.value === 'dropdown');
+    // Show/hide only; keep the textarea in the DOM so every question posts one q_opts[] value.
+    optsWrap.classList.toggle('hidden', !needsOpts);
+    if (!needsOpts) {
+      // ensure alignment: submit an empty string for text questions
+      optsTa.value = '';
     }
   }
 
-  numInput.addEventListener('input', (e) => renderQuestionFields(e.target.value));
-  renderQuestionFields(numInput.value);
+  function addQuestion(defaults = {}) {
+    const node = tmpl.content.cloneNode(true);
+    const card = node.querySelector('.card');
+
+    const textInput = card.querySelector('input[name="q_text[]"]');
+    const typeSel = card.querySelector('.q-type');
+    const optsTa = card.querySelector('.q-opts-ta');
+
+    if (defaults.text) textInput.value = defaults.text;
+    if (defaults.qtype) typeSel.value = defaults.qtype;
+    if (defaults.opts) optsTa.value = defaults.opts;
+
+    typeSel.addEventListener('change', () => syncOptsFor(card));
+
+    card.querySelector('.rm-q').addEventListener('click', () => {
+      card.remove();
+      renumber();
+    });
+
+    list.appendChild(node);
+    renumber();
+
+    // run once after added
+    syncOptsFor(list.lastElementChild);
+  }
+
+  document.getElementById('add-q').addEventListener('click', () => addQuestion());
+
+  // start with one question
+  if (list.children.length === 0) addQuestion();
+})();
 </script>
 {% endblock %}
