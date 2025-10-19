@@ -21,10 +21,5 @@ def edit_profile(request):
     return render(request, 'accounts/userAccount.html', {'form': form})
 
 @login_required
-def redirect_user(request):
-    user = request.user
-    
-    if user.role in ["manager", "admin"]:
+def redirect_user():
         return redirect('dashboard')
-    else:
-        return redirect("profile")
