@@ -45,6 +45,8 @@
     </div>
 
     <!--4×5 details table -->
+    <form id="authform" method="post" action="{% url 'submit_authorization_form' %}">
+    {% csrf_token %}
     <div class="overflow-x-auto mb-6">
        <table id="personalDetails" class="table w-full">
         <thead>
@@ -58,38 +60,43 @@
         <tbody>
           <tr>
             <td class="bg-base-300 font-semibold py-1">First Name</td>
-            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="e.g. Alex"></td>
-            <td class="bg-base-300 font-semibold">Last Name</td>
-            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="e.g. Taylor"></td>
-          </tr>
-          <tr>
-            <td class="bg-base-300 font-semibold py-1">DOB</td>
-            <td><input type="date" class="input input-bordered input-sm w-64"></td>
-            <td class="bg-base-300 font-semibold">Mobile</td>
-            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="+61 4xx xxx xxx"></td>
-          </tr>
-          <tr>
-            <td class="bg-base-300 font-semibold py-1">Email</td>
-            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="name@example.com"></td>
-            <td class="bg-base-300 font-semibold">Role</td>
-            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="e.g. Underground Electrician"></td>
-          </tr>
-          <tr>
-            <td class="bg-base-300 font-semibold py-1">Emergency Contact Name</td>
-            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="e.g. Jamie Doe"></td>
-            <td class="bg-base-300 font-semibold py-1">Emergency Contact Mobile</td>
-            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="+61 4xx xxx xxx"></td>
-          </tr>
-          <tr>
+            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="e.g. Alex" name="first_name"></td>
+
+            <td class="bg-base-300 font-semibold py-1">Role</td>
+            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="e.g. Underground Electrician" name="role"></td>
+        </tr>
+        <tr>
+            <td class="bg-base-300 font-semibold py-1">Last Name</td>
+            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="e.g. Taylor" name="last_name"></td>
+
             <td class="bg-base-300 font-semibold py-1">Project</td>
-            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="e.g. West Pit 2025"></td>
+            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="e.g. West Pit 2025" name="project"></td>
+        </tr>
+        <tr>
+            <td class="bg-base-300 font-semibold py-1">DOB</td>
+            <td><input type="date" class="input input-bordered input-sm w-64" name="dob"></td>
+
             <td class="bg-base-300 font-semibold py-1">Employer</td>
-            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="e.g. ACME Mining Pty Ltd"></td>
-          </tr>
+            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="e.g. ACME Mining Pty Ltd" name="employer"></td>
+        </tr>
+        <tr>
+            <td class="bg-base-300 font-semibold py-1">Email</td>
+            <td><input type="email" class="input input-bordered input-sm w-64" placeholder="name@example.com" name="email"></td>
+
+            <td class="bg-base-300 font-semibold py-1">Emergency Contact Name</td>
+            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="e.g. Jamie Doe" name="emergency_contact_name"></td>
+        </tr>
+        <tr>
+            <td class="bg-base-300 font-semibold py-1">Mobile</td>
+            <td><input type="tel" class="input input-bordered input-sm w-64" placeholder="+61 4xx xxx xxx" name="mobile"></td>
+
+            <td class="bg-base-300 font-semibold py-1">Emergency Contact Mobile</td>
+            <td><input type="tel" class="input input-bordered input-sm w-64" placeholder="+61 4xx xxx xxx" name="emergency_contact_mobile"></td>
+        </tr>
         </tbody>
       </table>
     </div>
-
+    
     <!-- Existing sections shifted down -->
 
     <!-- Required for Site Entry -->
@@ -108,36 +115,44 @@
           <tr>
             <td>Site Induction</td>
             <td>
-              <input type="date" class="input input-bordered input-sm w-40"
-                     oninput="syncExpiryMin(this); updateStatus(this)">
+              <input name="req_site_induction_issue" type="date"
+                    class="input input-bordered input-sm w-40"
+                    oninput="syncExpiryMin(this); updateStatus(this)">
             </td>
             <td>
-              <input type="date" class="input input-bordered input-sm w-40"
-                     oninput="syncExpiryMin(this); updateStatus(this)">
+              <input name="req_site_induction_expiry" type="date"
+                    class="input input-bordered input-sm w-40"
+                    oninput="syncExpiryMin(this); updateStatus(this)">
             </td>
             <td><span class="badge badge-neutral">TBA</span></td>
           </tr>
+
           <tr>
             <td>Medical</td>
             <td>
-              <input type="date" class="input input-bordered input-sm w-40"
-                     oninput="syncExpiryMin(this); updateStatus(this)">
+              <input name="req_medical_issue" type="date"
+                    class="input input-bordered input-sm w-40"
+                    oninput="syncExpiryMin(this); updateStatus(this)">
             </td>
             <td>
-              <input type="date" class="input input-bordered input-sm w-40"
-                     oninput="syncExpiryMin(this); updateStatus(this)">
+              <input name="req_medical_expiry" type="date"
+                    class="input input-bordered input-sm w-40"
+                    oninput="syncExpiryMin(this); updateStatus(this)">
             </td>
             <td><span class="badge badge-neutral">TBA</span></td>
           </tr>
+
           <tr>
             <td>Photo ID</td>
             <td>
-              <input type="date" class="input input-bordered input-sm w-40"
-                     oninput="syncExpiryMin(this); updateStatus(this)">
+              <input name="req_photo_id_issue" type="date"
+                    class="input input-bordered input-sm w-40"
+                    oninput="syncExpiryMin(this); updateStatus(this)">
             </td>
             <td>
-              <input type="date" class="input input-bordered input-sm w-40"
-                     oninput="syncExpiryMin(this); updateStatus(this)">
+              <input name="req_photo_id_expiry" type="date"
+                    class="input input-bordered input-sm w-40"
+                    oninput="syncExpiryMin(this); updateStatus(this)">
             </td>
             <td><span class="badge badge-neutral">TBA</span></td>
           </tr>
@@ -151,6 +166,7 @@
         <h4 class="font-semibold">Optional Credentials</h4>
         <button class="btn btn-sm" type="button" onclick="addOptionalRow()">Add item</button>
       </div>
+
       <div class="overflow-x-auto mt-2">
         <table class="table">
           <thead>
@@ -162,16 +178,26 @@
               <th></th>
             </tr>
           </thead>
-          <tbody id="opt-body"></tbody>
+          <tbody id="opt-body">
+            <!-- JS will append rows like:
+            <tr>
+              <td><input name="opt_title[]"  type="text" class="input input-bordered input-sm w-56" placeholder="e.g. First Aid HLTAID011"></td>
+              <td><input name="opt_issue[]"  type="date" class="input input-bordered input-sm w-40" oninput="syncExpiryMin(this); updateStatus(this)"></td>
+              <td><input name="opt_expiry[]" type="date" class="input input-bordered input-sm w-40" oninput="syncExpiryMin(this); updateStatus(this)"></td>
+              <td><span class="badge badge-neutral">TBA</span></td>
+              <td><button type="button" class="btn btn-ghost btn-xs" onclick="this.closest('tr').remove()">Remove</button></td>
+            </tr>
+            -->
+          </tbody>
         </table>
       </div>
     </div>
+  </form>
 
     <!-- Footer: Submit (left, gated) / Close (right) -->
     <div class="modal-action">
       <div class="flex w-full items-center justify-between">
-        <button id="demoSubmitBtn" type="button" class="btn btn-primary" disabled
-                onclick="submitDemoForm()">
+        <button id="demoSubmitBtn" type="submit" form="authform" class="btn btn-primary" disabled>
           Submit
         </button>
         <button type="button" class="btn"
@@ -299,9 +325,21 @@
     const tbody = document.getElementById('opt-body');
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><input type="text" class="input input-bordered input-sm w-56" placeholder="e.g. First Aid HLTAID011"></td>
-      <td><input type="date" class="input input-bordered input-sm w-40" oninput="syncExpiryMin(this); updateStatus(this)"></td>
-      <td><input type="date" class="input input-bordered input-sm w-40" oninput="syncExpiryMin(this); updateStatus(this)"></td>
+      <td>
+        <input name="opt_title[]" type="text"
+               class="input input-bordered input-sm w-56"
+               placeholder="e.g. First Aid HLTAID011">
+      </td>
+      <td>
+        <input name="opt_issue[]" type="date"
+               class="input input-bordered input-sm w-40"
+               oninput="syncExpiryMin(this); updateStatus(this)">
+      </td>
+      <td>
+        <input name="opt_expiry[]" type="date"
+               class="input input-bordered input-sm w-40"
+               oninput="syncExpiryMin(this); updateStatus(this)">
+      </td>
       <td><span class="badge badge-neutral">TBA</span></td>
       <td><button type="button" class="btn btn-ghost btn-xs" onclick="this.closest('tr').remove()">Remove</button></td>
     `;

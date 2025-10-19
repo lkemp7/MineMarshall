@@ -4,6 +4,8 @@ from accounts.models import CustomUser
 from .models import Form, Question
 from django.http import HttpResponseForbidden
 from django.shortcuts import render, redirect, get_object_or_404
+from django.views.decorators.http import require_POST
+from .services import create_or_update_user_from_post
 
 @login_required
 def dashboard(request):
@@ -60,9 +62,20 @@ def personnel(request):
 
 @login_required
 def user_profile(request, user_id):
-    user_obj = get_object_or_404(CustomUser, pk=user_id)
+    user_qs = CustomUser.objects.prefetch_related("credentials").select_related("worker_profile")
+    user_obj = get_object_or_404(user_qs, pk=user_id)
     return render(request, "user_profile.html", {"user_obj": user_obj})
 
 @login_required
 def metrics(request):
     return render(request, "metrics.html")
+
+@require_POST
+@login_required
+def submit_authorization_form(request):
+    if request.method != "POST":
+        return redirect("my_forms")
+    user = create_or_update_user_from_post(request.POST)
+    if not user:
+        return redirect("my_forms")
+    return redirect("user_profile", user_id=user.id)
