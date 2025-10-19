@@ -1,0 +1,327 @@
+{% load static %}
+
+<dialog id="demoAuthModal" class="modal">
+  <div class="modal-box max-w-4xl">
+    <style>
+      #personalDetails th,
+      #personalDetails td { padding-top: 0.3rem; padding-bottom: 0.3rem; }
+
+      #personalDetails input.input {
+        height: 2.1rem;
+        min-height: 2.1rem;
+        padding-top: 0.25rem;
+        padding-bottom: 0.25rem;
+      }
+    </style>
+    <!-- Header: logo left, details table right -->
+    <div class="flex items-start justify-between mb-4">
+      <img src="{% static 'Orefox_logo.png' %}" alt="Orefox Logo"
+           class="h-36 w-auto shrink-0 mr-8">
+
+      <table class="table table-compact text-xs w-auto shrink-0 text-right">
+        <tbody>
+          <tr>
+            <th class="font-semibold whitespace-nowrap py-1 px-3">Document Owner</th>
+            <td class="whitespace-nowrap py-1 px-3 text-left">OreFox</td>
+          </tr>
+          <tr>
+            <th class="font-semibold whitespace-nowrap py-1 px-3">Document Approver</th>
+            <td class="whitespace-nowrap py-1 px-3 text-left">MineMarshal</td>
+          </tr>
+          <tr>
+            <th class="font-semibold whitespace-nowrap py-1 px-3">Version</th>
+            <td class="whitespace-nowrap py-1 px-3 text-left">1</td>
+          </tr>
+          <tr>
+            <th class="font-semibold whitespace-nowrap py-1 px-3">Issue Date</th>
+            <td class="whitespace-nowrap py-1 px-3 text-left">2025-06-01</td>
+          </tr>
+          <tr>
+            <th class="font-semibold whitespace-nowrap py-1 px-3">Revision Date</th>
+            <td class="whitespace-nowrap py-1 px-3 text-left">2025-10-01</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!--4×5 details table -->
+    <div class="overflow-x-auto mb-6">
+       <table id="personalDetails" class="table w-full">
+        <thead>
+          <tr>
+            <th class="bg-base-300 py-1">Field</th>
+            <th class="py-1">Answer</th>
+            <th class="bg-base-300 py-1">Field</th>
+            <th class="py-1">Answer</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="bg-base-300 font-semibold py-1">First Name</td>
+            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="e.g. Alex"></td>
+            <td class="bg-base-300 font-semibold">Last Name</td>
+            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="e.g. Taylor"></td>
+          </tr>
+          <tr>
+            <td class="bg-base-300 font-semibold py-1">DOB</td>
+            <td><input type="date" class="input input-bordered input-sm w-64"></td>
+            <td class="bg-base-300 font-semibold">Mobile</td>
+            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="+61 4xx xxx xxx"></td>
+          </tr>
+          <tr>
+            <td class="bg-base-300 font-semibold py-1">Email</td>
+            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="name@example.com"></td>
+            <td class="bg-base-300 font-semibold">Role</td>
+            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="e.g. Underground Electrician"></td>
+          </tr>
+          <tr>
+            <td class="bg-base-300 font-semibold py-1">Emergency Contact Name</td>
+            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="e.g. Jamie Doe"></td>
+            <td class="bg-base-300 font-semibold py-1">Emergency Contact Mobile</td>
+            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="+61 4xx xxx xxx"></td>
+          </tr>
+          <tr>
+            <td class="bg-base-300 font-semibold py-1">Project</td>
+            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="e.g. West Pit 2025"></td>
+            <td class="bg-base-300 font-semibold py-1">Employer</td>
+            <td><input type="text" class="input input-bordered input-sm w-64" placeholder="e.g. ACME Mining Pty Ltd"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Existing sections shifted down -->
+
+    <!-- Required for Site Entry -->
+    <h4 class="font-semibold mb-2">Required for Site Entry</h4>
+    <div class="overflow-x-auto mb-6">
+      <table class="table table-zebra">
+        <thead>
+          <tr>
+            <th>Requirement</th>
+            <th>Issue Date</th>
+            <th>Expiry Date</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="req-body">
+          <tr>
+            <td>Site Induction</td>
+            <td>
+              <input type="date" class="input input-bordered input-sm w-40"
+                     oninput="syncExpiryMin(this); updateStatus(this)">
+            </td>
+            <td>
+              <input type="date" class="input input-bordered input-sm w-40"
+                     oninput="syncExpiryMin(this); updateStatus(this)">
+            </td>
+            <td><span class="badge badge-neutral">TBA</span></td>
+          </tr>
+          <tr>
+            <td>Medical</td>
+            <td>
+              <input type="date" class="input input-bordered input-sm w-40"
+                     oninput="syncExpiryMin(this); updateStatus(this)">
+            </td>
+            <td>
+              <input type="date" class="input input-bordered input-sm w-40"
+                     oninput="syncExpiryMin(this); updateStatus(this)">
+            </td>
+            <td><span class="badge badge-neutral">TBA</span></td>
+          </tr>
+          <tr>
+            <td>Photo ID</td>
+            <td>
+              <input type="date" class="input input-bordered input-sm w-40"
+                     oninput="syncExpiryMin(this); updateStatus(this)">
+            </td>
+            <td>
+              <input type="date" class="input input-bordered input-sm w-40"
+                     oninput="syncExpiryMin(this); updateStatus(this)">
+            </td>
+            <td><span class="badge badge-neutral">TBA</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Optional credentials -->
+    <div class="mt-6">
+      <div class="flex items-center justify-between">
+        <h4 class="font-semibold">Optional Credentials</h4>
+        <button class="btn btn-sm" type="button" onclick="addOptionalRow()">Add item</button>
+      </div>
+      <div class="overflow-x-auto mt-2">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Issue Date</th>
+              <th>Expiry Date</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="opt-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Footer: Submit (left, gated) / Close (right) -->
+    <div class="modal-action">
+      <div class="flex w-full items-center justify-between">
+        <button id="demoSubmitBtn" type="button" class="btn btn-primary" disabled
+                onclick="submitDemoForm()">
+          Submit
+        </button>
+        <button type="button" class="btn"
+                onclick="document.getElementById('demoAuthModal').close()">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
+
+<script>
+  // Only enforce: expiry >= issue (allow past expiries).
+  function syncExpiryMin(inputEl) {
+    const row = inputEl.closest('tr');
+    const [issueEl, expiryEl] = row.querySelectorAll('input[type="date"]');
+    if (!expiryEl) return;
+    if (issueEl && issueEl.value) {
+      expiryEl.min = issueEl.value;                     // constrain only to issue date
+      if (expiryEl.value && expiryEl.value < issueEl.value) {
+        expiryEl.value = '';                            // clear invalid relative to issue
+      }
+    } else {
+      expiryEl.removeAttribute('min');                  // allow any date if no issue set
+    }
+  }
+
+  // Status: TBA (missing) / Invalid (expiry < issue) / Expired (expiry < today) / Compliant
+  function updateStatus(inputEl) {
+    const row = inputEl.closest('tr');
+    const [issueEl, expiryEl] = row.querySelectorAll('input[type="date"]');
+    const badge = row.querySelector('.badge');
+
+    const issue = issueEl?.value ? new Date(issueEl.value) : null;
+    const expiry = expiryEl?.value ? new Date(expiryEl.value) : null;
+
+    issueEl?.classList.remove('input-error');
+    expiryEl?.classList.remove('input-error');
+
+    if (!issue || !expiry) {
+      badge.className = 'badge badge-neutral';
+      badge.textContent = 'TBA';
+      updateSubmitState();
+      return;
+    }
+    if (issue && expiry < issue) {
+      badge.className = 'badge badge-error';
+      badge.textContent = 'Invalid';
+      expiryEl.classList.add('input-error');
+      updateSubmitState();
+      return;
+    }
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (expiry < today) {
+      badge.className = 'badge badge-error';
+      badge.textContent = 'Expired';
+      updateSubmitState();
+      return;
+    }
+    badge.className = 'badge badge-success';
+    badge.textContent = 'Compliant';
+    updateSubmitState();
+  }
+
+  // Submit button 
+  // 1) Required-for-site-entry rows (issue & expiry present, expiry >= issue)
+  function isRequiredComplete() {
+    const rows = document.querySelectorAll('#req-body tr');
+    for (const tr of rows) {
+      const [issueEl, expiryEl] = tr.querySelectorAll('input[type="date"]');
+      if (!issueEl?.value || !expiryEl?.value) return false;
+      if (expiryEl.value < issueEl.value) return false;
+    }
+    return true;
+  }
+
+  // 2) All 10 inputs in the 4×5 details table present (any type)
+  function isDetailsComplete() {
+    const inputs = document.querySelectorAll('#personalDetails input');
+    for (const el of inputs) {
+      if (!el.value || !el.value.trim()) return false;
+    }
+    return true;
+  }
+
+  function updateSubmitState() {
+    const btn = document.getElementById('demoSubmitBtn');
+    if (!btn) return;
+    btn.disabled = !(isRequiredComplete() && isDetailsComplete());
+  }
+
+  // Demo-only: clear everything and close
+  function submitDemoForm() {
+    if (!(isRequiredComplete() && isDetailsComplete())) return; // guard
+    const dlg = document.getElementById('demoAuthModal');
+
+    // Clear the 4×5 details inputs
+    dlg.querySelectorAll('#personalDetails input').forEach(el => el.value = '');
+
+    // Clear Required/Optional section inputs
+    dlg.querySelectorAll('#req-body input[type="date"], #opt-body input[type="date"], #opt-body input[type="text"]')
+       .forEach(el => el.value = '');
+
+    // Reset badges
+    dlg.querySelectorAll('tbody tr .badge').forEach(b => {
+      b.className = 'badge badge-neutral';
+      b.textContent = 'TBA';
+    });
+
+    // Remove optional rows
+    const optBody = dlg.querySelector('#opt-body');
+    if (optBody) optBody.innerHTML = '';
+
+    // Disable submit again and close
+    updateSubmitState();
+    dlg.close();
+  }
+
+  // Add/remove optional rows (client-side only)
+  function addOptionalRow() {
+    const tbody = document.getElementById('opt-body');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" class="input input-bordered input-sm w-56" placeholder="e.g. First Aid HLTAID011"></td>
+      <td><input type="date" class="input input-bordered input-sm w-40" oninput="syncExpiryMin(this); updateStatus(this)"></td>
+      <td><input type="date" class="input input-bordered input-sm w-40" oninput="syncExpiryMin(this); updateStatus(this)"></td>
+      <td><span class="badge badge-neutral">TBA</span></td>
+      <td><button type="button" class="btn btn-ghost btn-xs" onclick="this.closest('tr').remove()">Remove</button></td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  // Initialize listeners so Submit reflects changes in both sections
+  document.addEventListener('DOMContentLoaded', () => {
+    updateSubmitState();
+
+    // Keep submit state in sync while typing/changing details (4×5 table)
+    document.querySelectorAll('#personalDetails input').forEach(el => {
+      el.addEventListener('input', updateSubmitState);
+      el.addEventListener('change', updateSubmitState);
+    });
+
+    // Also keep in sync if required-section dates change (belt & braces)
+    document.querySelectorAll('#req-body input[type="date"]').forEach(el => {
+      el.addEventListener('input', updateSubmitState);
+      el.addEventListener('change', updateSubmitState);
+    });
+  });
+</script>
