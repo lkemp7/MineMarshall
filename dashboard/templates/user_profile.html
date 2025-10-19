@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block header_extra %}
+  <!-- Overhanging avatar -->
   <div class="absolute z-20 left-72 sm:left-80 bottom-[-8rem]">
     <div class="w-40 h-40 sm:w-60 sm:h-60
                 rounded-full ring ring-[#F79327] ring-offset-base-100 ring-offset-2
@@ -17,19 +18,126 @@
 {% endblock %}
 
 {% block content %}
-  <div class="pt-[calc(8rem+1rem)]">
+  <!-- pad for avatar, center and constrain width -->
+  <div class="pt-[calc(8rem+1rem)] max-w-6xl mx-auto px-2">
     <h1 class="text-4xl text-[#F79327] mb-2">
       {{ user_obj.first_name }} {{ user_obj.last_name }}
     </h1>
     <p class="opacity-70 mb-6">{{ user_obj.email }}</p>
 
-    <div class="grid gap-4 max-w-3xl">
-      <div class="card bg-base-200 p-4">
-        <div class="mb-2"><span class="opacity-70">Active:</span> {{ user_obj.is_active|yesno:"Yes,No" }}</div>
-        <div class="mb-2"><span class="opacity-70">Joined:</span> {{ user_obj.date_joined|date:"Y-m-d H:i" }}</div>
+    <!-- Two-column layout (stacks on mobile) -->
+    <div class="grid gap-6 grid-cols-1 lg:grid-cols-2">
+      <!-- LEFT: status + personal details -->
+      <div class="space-y-4">
+        <div class="card bg-base-200 p-4">
+          <h3 class="font-semibold mb-2">Status</h3>
+          <div class="space-y-2">
+            <div><span class="opacity-70">Active:</span> {{ user_obj.is_active|yesno:"Yes,No" }}</div>
+            <div><span class="opacity-70">Joined:</span> {{ user_obj.date_joined|date:"Y-m-d H:i" }}</div>
+          </div>
+        </div>
+
+        <div class="card bg-base-200 p-4">
+          <h3 class="font-semibold mb-2">Details</h3>
+          <div class="space-y-2">
+            <div><span class="opacity-70">Mobile:</span> {{ user_obj.phone_number|default:"" }}</div>
+
+            {% if user_obj.worker_profile %}
+              <div><span class="opacity-70">DOB:</span> {{ user_obj.worker_profile.dob|date:"Y-m-d"|default:"" }}</div>
+              <div><span class="opacity-70">Role:</span> {{ user_obj.worker_profile.role|default:"" }}</div>
+              <div><span class="opacity-70">Project:</span> {{ user_obj.worker_profile.project|default:"" }}</div>
+              <div><span class="opacity-70">Employer:</span> {{ user_obj.worker_profile.employer|default:"" }}</div>
+              <div>
+                <span class="opacity-70">Emergency Contact:</span>
+                {{ user_obj.worker_profile.emergency_contact_name|default:"" }}
+                {% if user_obj.worker_profile.emergency_contact_mobile %} — {{ user_obj.worker_profile.emergency_contact_mobile }}{% endif %}
+              </div>
+            {% else %}
+              <div class="opacity-60">No profile details yet.</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <a href="{% url 'personnel' %}" class="btn btn-ghost">← Back to Personnel</a>
       </div>
 
-      <a href="{% url 'personnel' %}" class="btn btn-ghost">← Back to Personnel</a>
+      <!-- RIGHT: credentials -->
+      <div class="space-y-4">
+        <div class="card bg-base-200 p-4">
+          <h3 class="font-semibold mb-2">Site Requirements</h3>
+          <div class="overflow-x-auto">
+            <table class="table table-compact w-full">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Issue</th>
+                  <th>Expiry</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% with req=user_obj.credentials.all %}
+                  {% for c in req %}
+                    {% if c.required %}
+                      <tr>
+                        <td>{{ c.title }}</td>
+                        <td>{{ c.issue_date|date:"Y-m-d"|default:"" }}</td>
+                        <td>{{ c.expiry_date|date:"Y-m-d"|default:"" }}</td>
+                        {% with st=c.status %}
+                          <td>
+                            <span class="badge {% if st == 'Compliant' %}badge-success{% elif st == 'Expired' %}badge-error{% else %}badge-neutral{% endif %}">
+                              {{ st }}
+                            </span>
+                          </td>
+                        {% endwith %}
+                      </tr>
+                    {% endif %}
+                  {% empty %}
+                    <tr><td colspan="4" class="opacity-60">No site requirements recorded.</td></tr>
+                  {% endfor %}
+                {% endwith %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card bg-base-200 p-4">
+          <h3 class="font-semibold mb-2">Optional Credentials</h3>
+          <div class="overflow-x-auto">
+            <table class="table table-compact w-full">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Issue</th>
+                  <th>Expiry</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for c in user_obj.credentials.all %}
+                  {% if not c.required %}
+                    <tr>
+                      <td>{{ c.title }}</td>
+                      <td>{{ c.issue_date|date:"Y-m-d"|default:"" }}</td>
+                      <td>{{ c.expiry_date|date:"Y-m-d"|default:"" }}</td>
+                      {% with st=c.status %}
+                        <td>
+                          <span class="badge {% if st == 'Compliant' %}badge-success{% elif st == 'Expired' %}badge-error{% else %}badge-neutral{% endif %}">
+                            {{ st }}
+                          </span>
+                        </td>
+                      {% endwith %}
+                    </tr>
+                  {% endif %}
+                {% empty %}
+                  <tr><td colspan="4" class="opacity-60">No optional credentials recorded.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
     </div>
   </div>
 {% endblock %}
