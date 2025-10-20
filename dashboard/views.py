@@ -192,3 +192,29 @@ def save_credential(request, pk):
         return redirect('user_profile', pk=pk)
     
     return redirect('user_profile', pk=pk)
+
+@login_required
+def delete_user(request, pk):
+    if request.user.role not in ['admin', 'manager']:
+        messages.error(request, 'You do not have permission to delete users.')
+        return redirect('personnel')
+    
+    user_obj = get_object_or_404(CustomUser, pk=pk)
+    
+    # Prevent users from deleting themselves
+    if user_obj.pk == request.user.pk:
+        messages.error(request, 'You cannot delete your own account.')
+        return redirect('user_profile', pk=pk)
+    
+    # Prevent managers from deleting admins
+    if request.user.role == 'manager' and user_obj.role == 'admin':
+        messages.error(request, 'Managers cannot delete admin users.')
+        return redirect('user_profile', pk=pk)
+    
+    if request.method == 'POST':
+        user_name = f"{user_obj.first_name} {user_obj.last_name}"
+        user_obj.delete()
+        messages.success(request, f'User {user_name} has been deleted.')
+        return redirect('personnel')
+    
+    return redirect('user_profile', pk=pk)

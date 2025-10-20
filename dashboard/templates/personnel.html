@@ -4,7 +4,7 @@
   <div class="flex items-center justify-between mb-6">
     <h1 class="text-4xl text-[#F79327]">Personnel</h1>
     {% if request.user.role == 'admin' or request.user.role == 'manager' %}
-    <<button class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]"
+    <button class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]"
       onclick="document.getElementById('addUserModal').showModal()"
     >
       <svg
@@ -66,5 +66,97 @@
   </div>
   {% endif %}
 </div>
+
+<!-- Add User Modal -->
+{% if request.user.role == 'admin' or request.user.role == 'manager' %}
+<dialog id="addUserModal" class="modal">
+  <div class="modal-box max-w-2xl">
+    <h3 class="font-bold text-lg mb-4">Add New User</h3>
+    <form method="post" action="{% url 'add_user' %}">
+      {% csrf_token %}
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="form-control">
+          <label class="label"><span class="label-text">First Name *</span></label>
+          <input type="text" name="first_name" class="input input-bordered" required />
+        </div>
+        
+        <div class="form-control">
+          <label class="label"><span class="label-text">Last Name *</span></label>
+          <input type="text" name="last_name" class="input input-bordered" required />
+        </div>
+        
+        <div class="form-control">
+          <label class="label"><span class="label-text">Email *</span></label>
+          <input type="email" name="email" class="input input-bordered" required />
+        </div>
+        
+        <div class="form-control">
+          <label class="label"><span class="label-text">Phone Number</span></label>
+          <input type="text" name="phone_number" class="input input-bordered" />
+        </div>
+        
+        <div class="form-control">
+          <label class="label"><span class="label-text">Password *</span></label>
+          <input type="password" name="password" class="input input-bordered" required />
+        </div>
+        
+        <div class="form-control">
+          <label class="label"><span class="label-text">Role *</span></label>
+          <select name="role" class="select select-bordered" required>
+            <option value="user">User</option>
+            <option value="manager">Manager</option>
+            {% if request.user.role == 'admin' %}
+              <option value="admin">Admin</option>
+            {% endif %}
+          </select>
+        </div>
+      </div>
+      
+      <div class="divider">Worker Profile (Optional)</div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="form-control">
+          <label class="label"><span class="label-text">Date of Birth</span></label>
+          <input type="date" name="dob" class="input input-bordered" />
+        </div>
+        
+        <div class="form-control">
+          <label class="label"><span class="label-text">Job Role</span></label>
+          <input type="text" name="worker_role" class="input input-bordered" />
+        </div>
+        
+        <div class="form-control">
+          <label class="label"><span class="label-text">Project</span></label>
+          <input type="text" name="project" class="input input-bordered" />
+        </div>
+        
+        <div class="form-control">
+          <label class="label"><span class="label-text">Employer</span></label>
+          <input type="text" name="employer" class="input input-bordered" />
+        </div>
+        
+        <div class="form-control">
+          <label class="label"><span class="label-text">Emergency Contact Name</span></label>
+          <input type="text" name="emergency_contact_name" class="input input-bordered" />
+        </div>
+        
+        <div class="form-control">
+          <label class="label"><span class="label-text">Emergency Contact Mobile</span></label>
+          <input type="text" name="emergency_contact_mobile" class="input input-bordered" />
+        </div>
+      </div>
+      
+      <div class="modal-action">
+        <button type="button" class="btn" onclick="document.getElementById('addUserModal').close()">Cancel</button>
+        <button type="submit" class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]">Create User</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
+{% endif %}
 
 {% endblock %}
