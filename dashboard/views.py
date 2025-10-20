@@ -1,4 +1,3 @@
-from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from accounts.models import CustomUser
 from .models import Form, Question
@@ -8,6 +7,7 @@ from django.views.decorators.http import require_POST
 from .services import create_or_update_user_from_post
 from dashboard.models import Credential
 from django.utils import timezone
+from django.contrib import messages
 
 @login_required
 def dashboard(request):
@@ -97,3 +97,40 @@ def submit_authorization_form(request):
     if not user:
         return redirect("my_forms")
     return redirect("user_profile", user_id=user.id)
+
+@login_required
+def edit_user_profile(request, pk):
+    # Check if user has permission
+    if request.user.role not in ['admin', 'manager']:
+        messages.error(request, 'You do not have permission to edit profiles.')
+        return redirect('personnel')
+    
+    user_obj = get_object_or_404(CustomUser, pk=pk)
+    
+    if request.method == 'POST':
+        # Update basic user info
+        user_obj.first_name = request.POST.get('first_name')
+        user_obj.last_name = request.POST.get('last_name')
+        user_obj.email = request.POST.get('email')
+        user_obj.phone_number = request.POST.get('phone_number')
+        user_obj.save()
+        
+        # Update or create worker profile
+        if hasattr(user_obj, 'worker_profile'):
+            profile = user_obj.worker_profile
+        else:
+            from dashboard.models import WorkerProfile  # Adjust import as needed
+            profile = WorkerProfile.objects.create(user=user_obj)
+        
+        profile.dob = request.POST.get('dob') or None
+        profile.role = request.POST.get('worker_role')
+        profile.project = request.POST.get('project')
+        profile.employer = request.POST.get('employer')
+        profile.emergency_contact_name = request.POST.get('emergency_contact_name')
+        profile.emergency_contact_mobile = request.POST.get('emergency_contact_mobile')
+        profile.save()
+        
+        messages.success(request, f'Profile updated for {user_obj.first_name} {user_obj.last_name}')
+        return redirect('user_profile', pk=pk)
+    
+    return redirect('user_profile', pk=pk)
