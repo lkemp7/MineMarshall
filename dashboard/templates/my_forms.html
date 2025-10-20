@@ -1,32 +1,13 @@
 {% extends "base.html" %}
 
-
-
 {% block content %}
-<div class="flex items-center justify-between mb-4">
-  <h1 class="text-4xl text-[#F79327]">My Forms</h1>
+<div class="mb-6">
+  <h1 class="text-4xl text-[#F79327] mb-3">Forms</h1>
   <button class="btn btn-primary" onclick="document.getElementById('demoAuthModal').showModal()">
     Default Form
   </button>
 </div>
+
 {% include "forms/default_form.html" %}
-{% if forms %}
-<ul class="menu bg-base-200 w-full max-w-3xl rounded-box">
-  {% for f in forms %}
-  <li>
-    <a href="{% url 'view_form' f.pk %}">
-      <span class="font-semibold">{{ f.title }}</span>
-      <span class="opacity-60 text-sm">— {{ f.created_at|date:"Y-m-d H:i" }}</span>
-    </a>
-  </li>
-  {% endfor %}
-</ul>
-{% else %}
-<p class="opacity-70">
-  No forms yet.
-  {% if request.user.email|lower == 'admin@minemarshall.com' %}
-    You can create one from the “Create Forms” link in the sidebar.
-  {% endif %}
-</p>
-{% endif %}
+
 {% endblock %}
