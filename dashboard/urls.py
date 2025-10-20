@@ -13,5 +13,6 @@ urlpatterns = [
     path("metrics/", views.metrics, name="metrics"),
     path('forms/submit/', views.submit_authorization_form, name='submit_authorization_form'),
     path('personnel/<int:pk>/edit/', views.edit_user_profile, name='edit_user_profile'),
-    path('personnel/<int:pk>/delete/', views.delete_user, name='delete_user')
+    path('personnel/<int:pk>/delete/', views.delete_user, name='delete_user'),
+    path('personnel/<int:pk>/credential/', views.save_credential, name='save_credential'),
 ]

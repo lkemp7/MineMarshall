@@ -205,7 +205,170 @@
   </dialog>
   {% endif %}
 
-  <!-- Your existing modals (Edit Profile, Add/Edit Credential) -->
-  <!-- ... -->
+<!-- Edit Profile Modal -->
+{% if request.user.role == 'admin' or request.user.role == 'manager' %}
+<dialog id="editProfileModal" class="modal">
+  <div class="modal-box max-w-2xl">
+    <h3 class="font-bold text-lg mb-4">Edit Profile</h3>
+    <form method="post" action="{% url 'edit_user_profile' user_obj.pk %}">
+      {% csrf_token %}
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Basic Info -->
+        <div class="form-control">
+          <label class="label"><span class="label-text">First Name</span></label>
+          <input type="text" name="first_name" value="{{ user_obj.first_name }}" class="input input-bordered" required />
+        </div>
+        
+        <div class="form-control">
+          <label class="label"><span class="label-text">Last Name</span></label>
+          <input type="text" name="last_name" value="{{ user_obj.last_name }}" class="input input-bordered" required />
+        </div>
+        
+        <div class="form-control">
+          <label class="label"><span class="label-text">Email</span></label>
+          <input type="email" name="email" value="{{ user_obj.email }}" class="input input-bordered" required />
+        </div>
+        
+        <div class="form-control">
+          <label class="label"><span class="label-text">Phone Number</span></label>
+          <input type="text" name="phone_number" value="{{ user_obj.phone_number }}" class="input input-bordered" />
+        </div>
+        
+        <!-- Worker Profile Fields -->
+        {% if user_obj.worker_profile %}
+        <div class="form-control">
+          <label class="label"><span class="label-text">Date of Birth</span></label>
+          <input type="date" name="dob" value="{{ user_obj.worker_profile.dob|date:'Y-m-d' }}" class="input input-bordered" />
+        </div>
+        
+        <div class="form-control">
+          <label class="label"><span class="label-text">Job Role</span></label>
+          <input type="text" name="worker_role" value="{{ user_obj.worker_profile.role }}" class="input input-bordered" />
+        </div>
+        
+        <div class="form-control">
+          <label class="label"><span class="label-text">Project</span></label>
+          <input type="text" name="project" value="{{ user_obj.worker_profile.project }}" class="input input-bordered" />
+        </div>
+        
+        <div class="form-control">
+          <label class="label"><span class="label-text">Employer</span></label>
+          <input type="text" name="employer" value="{{ user_obj.worker_profile.employer }}" class="input input-bordered" />
+        </div>
+        
+        <div class="form-control">
+          <label class="label"><span class="label-text">Emergency Contact Name</span></label>
+          <input type="text" name="emergency_contact_name" value="{{ user_obj.worker_profile.emergency_contact_name }}" class="input input-bordered" />
+        </div>
+        
+        <div class="form-control">
+          <label class="label"><span class="label-text">Emergency Contact Mobile</span></label>
+          <input type="text" name="emergency_contact_mobile" value="{{ user_obj.worker_profile.emergency_contact_mobile }}" class="input input-bordered" />
+        </div>
+        {% else %}
+        <div class="form-control">
+          <label class="label"><span class="label-text">Date of Birth</span></label>
+          <input type="date" name="dob" class="input input-bordered" />
+        </div>
+        
+        <div class="form-control">
+          <label class="label"><span class="label-text">Job Role</span></label>
+          <input type="text" name="worker_role" class="input input-bordered" />
+        </div>
+        
+        <div class="form-control">
+          <label class="label"><span class="label-text">Project</span></label>
+          <input type="text" name="project" class="input input-bordered" />
+        </div>
+        
+        <div class="form-control">
+          <label class="label"><span class="label-text">Employer</span></label>
+          <input type="text" name="employer" class="input input-bordered" />
+        </div>
+        
+        <div class="form-control">
+          <label class="label"><span class="label-text">Emergency Contact Name</span></label>
+          <input type="text" name="emergency_contact_name" class="input input-bordered" />
+        </div>
+        
+        <div class="form-control">
+          <label class="label"><span class="label-text">Emergency Contact Mobile</span></label>
+          <input type="text" name="emergency_contact_mobile" class="input input-bordered" />
+        </div>
+        {% endif %}
+      </div>
+      
+      <div class="modal-action">
+        <button type="button" class="btn" onclick="document.getElementById('editProfileModal').close()">Cancel</button>
+        <button type="submit" class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]">Save Changes</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
+
+<!-- Add/Edit Credential Modal -->
+<dialog id="addCredentialModal" class="modal">
+  <div class="modal-box">
+    <h3 class="font-bold text-lg mb-4" id="credentialModalTitle">Add Credential</h3>
+    <form method="post" action="{% url 'save_credential' user_obj.pk %}" id="credentialForm">
+      {% csrf_token %}
+      <input type="hidden" name="credential_id" id="credential_id" value="">
+      
+      <div class="form-control mb-4">
+        <label class="label"><span class="label-text">Title</span></label>
+        <input type="text" name="title" id="cred_title" class="input input-bordered" required />
+      </div>
+      
+      <div class="form-control mb-4">
+        <label class="label"><span class="label-text">Issue Date</span></label>
+        <input type="date" name="issue_date" id="cred_issue_date" class="input input-bordered" />
+      </div>
+      
+      <div class="form-control mb-4">
+        <label class="label"><span class="label-text">Expiry Date</span></label>
+        <input type="date" name="expiry_date" id="cred_expiry_date" class="input input-bordered" />
+      </div>
+      
+      <div class="form-control mb-4">
+        <label class="cursor-pointer label">
+          <span class="label-text">Required Credential</span>
+          <input type="checkbox" name="required" id="cred_required" class="checkbox checkbox-primary" />
+        </label>
+      </div>
+      
+      <div class="modal-action">
+        <button type="button" class="btn" onclick="closeCredentialModal()">Cancel</button>
+        <button type="submit" class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]">Save</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
+
+<script>
+  function editCredential(id, title, issueDate, expiryDate, required) {
+    document.getElementById('credentialModalTitle').textContent = 'Edit Credential';
+    document.getElementById('credential_id').value = id;
+    document.getElementById('cred_title').value = title;
+    document.getElementById('cred_issue_date').value = issueDate;
+    document.getElementById('cred_expiry_date').value = expiryDate;
+    document.getElementById('cred_required').checked = required;
+    document.getElementById('addCredentialModal').showModal();
+  }
+
+  function closeCredentialModal() {
+    document.getElementById('credentialModalTitle').textContent = 'Add Credential';
+    document.getElementById('credentialForm').reset();
+    document.getElementById('credential_id').value = '';
+    document.getElementById('addCredentialModal').close();
+  }
+</script>
+{% endif %}
   
 {% endblock %}
