@@ -2,13 +2,15 @@ from django.contrib.auth.decorators import login_required
 from accounts.models import CustomUser
 from django.contrib import messages
 from .models import Form, Question
-from django.http import HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_POST
 from .services import create_or_update_user_from_post
 from dashboard.models import WorkerProfile, Credential
 from django.utils import timezone
 from django.contrib import messages
+from django.template.loader import render_to_string
+import uuid
 
 @login_required
 def dashboard(request):
@@ -44,7 +46,13 @@ def my_forms(request):
 @login_required
 def view_form(request, pk):
     form_obj = get_object_or_404(Form, pk=pk, created_by=request.user)
-    return render(request, "form_detail.html", {"form": form_obj})
+    questions = form_obj.questions.all().order_by('order')
+    
+    context = {
+        'form': form_obj,
+        'questions': questions,
+    }
+    return render(request, 'view_form.html', context)
 
 
 @login_required
@@ -219,3 +227,165 @@ def delete_user(request, pk):
         return redirect('personnel')
     
     return redirect('user_profile', pk=pk)
+
+@login_required
+def create_form(request):
+    if request.user.role not in ['admin', 'manager']:
+        messages.error(request, 'You do not have permission to create forms.')
+        return redirect('dashboard')
+    
+    if request.method == 'POST':
+        title = request.POST.get('title', 'Untitled Form')
+        description = request.POST.get('description', '')
+        
+        # Create the form
+        form = Form.objects.create(
+            title=title,
+            description=description,
+            created_by=request.user
+        )
+        
+        # Get number of questions
+        num_questions = int(request.POST.get('num_questions', 0))
+        
+        # Create questions
+        for i in range(1, num_questions + 1):
+            question_text = request.POST.get(f'question_{i}')
+            question_type = request.POST.get(f'question_type_{i}', 'text')
+            options = request.POST.get(f'options_{i}', '')
+            is_required = request.POST.get(f'required_{i}') == 'on'
+            
+            if question_text:
+                Question.objects.create(
+                    form=form,
+                    question_text=question_text,
+                    question_type=question_type,
+                    options_text=options if question_type in ['radio', 'checkbox', 'dropdown'] else '',
+                    is_required=is_required,
+                    order=i
+                )
+        
+        messages.success(request, f'Form "{title}" created successfully!')
+        return redirect('view_form', pk=form.pk)
+    
+    return render(request, 'create_form.html')
+
+@login_required
+def add_question_field(request):
+    """Returns HTML for a new question field via HTMX"""
+    question_id = str(uuid.uuid4())[:8]  # Unique ID for this question
+    
+    html = f'''
+    <div class="card bg-base-100 p-4 question-card">
+      <div class="flex items-center justify-between mb-3">
+        <h5 class="font-semibold">Question</h5>
+        <button type="button" onclick="removeQuestion(this)" class="btn btn-xs btn-ghost text-error">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+          </svg>
+        </button>
+      </div>
+      
+      <div class="form-control mb-3">
+        <label class="label">
+          <span class="label-text">Question Text</span>
+        </label>
+        <input name="questions[{question_id}][text]" type="text" 
+               class="input input-bordered input-sm w-full" 
+               placeholder="Enter your question" required />
+      </div>
+      
+      <div class="grid grid-cols-2 gap-3 mb-3">
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Type</span>
+          </label>
+          <select name="questions[{question_id}][type]" 
+                  class="select select-bordered select-sm"
+                  onchange="toggleOptions(this, '{question_id}')">
+            <option value="text">Short Text</option>
+            <option value="textarea">Long Text</option>
+            <option value="number">Number</option>
+            <option value="date">Date</option>
+            <option value="time">Time</option>
+            <option value="email">Email</option>
+            <option value="phone">Phone Number</option>
+            <option value="radio">Multiple Choice (Single)</option>
+            <option value="checkbox">Multiple Choice (Multiple)</option>
+            <option value="dropdown">Dropdown</option>
+          </select>
+        </div>
+        
+        <div class="form-control">
+          <label class="cursor-pointer label">
+            <span class="label-text">Required</span>
+            <input type="checkbox" name="questions[{question_id}][required]" 
+                   class="checkbox checkbox-primary checkbox-sm" checked />
+          </label>
+        </div>
+      </div>
+      
+      <div id="options-{question_id}" style="display: none;">
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Options (one per line)</span>
+          </label>
+          <textarea name="questions[{question_id}][options]" 
+                    class="textarea textarea-bordered textarea-sm" 
+                    placeholder="Option 1\nOption 2\nOption 3"></textarea>
+        </div>
+      </div>
+    </div>
+    '''
+    return HttpResponse(html)
+
+@login_required
+def create_form(request):
+    if request.user.role not in ['admin', 'manager']:
+        return HttpResponse(status=403)
+    
+    if request.method == 'POST':
+        title = request.POST.get('title', 'Untitled Form')
+        description = request.POST.get('description', '')
+        
+        # Create the form
+        form = Form.objects.create(
+            title=title,
+            description=description,
+            created_by=request.user
+        )
+        
+        # Process questions - they come as questions[uuid][field]
+        questions_data = {}
+        for key, value in request.POST.items():
+            if key.startswith('questions['):
+                # Parse: questions[uuid][field] -> uuid, field
+                parts = key.split('[')
+                if len(parts) >= 3:
+                    uuid = parts[1].rstrip(']')
+                    field = parts[2].rstrip(']')
+                    
+                    if uuid not in questions_data:
+                        questions_data[uuid] = {}
+                    questions_data[uuid][field] = value
+        
+        # Create Question objects
+        order = 1
+        for uuid, data in questions_data.items():
+            if 'text' in data and data['text']:
+                Question.objects.create(
+                    form=form,
+                    question_text=data.get('text', ''),
+                    question_type=data.get('type', 'text'),
+                    options_text=data.get('options', ''),
+                    is_required=data.get('required') == 'on',
+                    order=order
+                )
+                order += 1
+        
+        # Close modal and refresh page via HTMX
+        response = HttpResponse()
+        response['HX-Redirect'] = f'/dashboard/forms/{form.pk}/'
+        return response
+    
+    return HttpResponse(status=405)

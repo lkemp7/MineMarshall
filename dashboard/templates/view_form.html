@@ -1,0 +1,105 @@
+<div>
+  <div class="mb-6">
+    <h2 class="text-3xl text-[#F79327] mb-2">{{ form.title }}</h2>
+    {% if form.description %}
+      <p class="opacity-70">{{ form.description }}</p>
+    {% endif %}
+  </div>
+
+  <div class="card bg-base-100 p-4 mb-6">
+    <div class="text-sm opacity-70 space-y-1">
+      <div><strong>Created by:</strong> {{ form.created_by.first_name }} {{ form.created_by.last_name }}</div>
+      <div><strong>Created:</strong> {{ form.created_at|date:"Y-m-d H:i" }}</div>
+      <div><strong>Questions:</strong> {{ questions|length }}</div>
+    </div>
+  </div>
+
+  {% if questions %}
+    <div class="space-y-4">
+      {% for question in questions %}
+        <div class="card bg-base-100 p-4">
+          <div class="flex items-start justify-between mb-2">
+            <h3 class="font-semibold">
+              {{ forloop.counter }}. {{ question.question_text }}
+              {% if question.is_required %}
+                <span class="text-error">*</span>
+              {% endif %}
+            </h3>
+            <span class="badge badge-neutral badge-sm">{{ question.get_question_type_display }}</span>
+          </div>
+          
+          <!-- Show what type of input this is -->
+          {% if question.question_type == 'text' %}
+            <input type="text" class="input input-bordered input-sm w-full" placeholder="Short text answer" disabled />
+          
+          {% elif question.question_type == 'textarea' %}
+            <textarea class="textarea textarea-bordered textarea-sm w-full" placeholder="Long text answer" disabled></textarea>
+          
+          {% elif question.question_type == 'number' %}
+            <input type="number" class="input input-bordered input-sm w-full" placeholder="Number" disabled />
+          
+          {% elif question.question_type == 'date' %}
+            <input type="date" class="input input-bordered input-sm w-full" disabled />
+          
+          {% elif question.question_type == 'time' %}
+            <input type="time" class="input input-bordered input-sm w-full" disabled />
+          
+          {% elif question.question_type == 'email' %}
+            <input type="email" class="input input-bordered input-sm w-full" placeholder="email@example.com" disabled />
+          
+          {% elif question.question_type == 'phone' %}
+            <input type="tel" class="input input-bordered input-sm w-full" placeholder="Phone number" disabled />
+          
+          {% elif question.question_type == 'radio' %}
+            <div class="space-y-2">
+              {% for option in question.options %}
+                <label class="flex items-center gap-2">
+                  <input type="radio" name="q{{ question.id }}" class="radio radio-primary radio-sm" disabled />
+                  <span class="text-sm">{{ option }}</span>
+                </label>
+              {% endfor %}
+            </div>
+          
+          {% elif question.question_type == 'checkbox' %}
+            <div class="space-y-2">
+              {% for option in question.options %}
+                <label class="flex items-center gap-2">
+                  <input type="checkbox" class="checkbox checkbox-primary checkbox-sm" disabled />
+                  <span class="text-sm">{{ option }}</span>
+                </label>
+              {% endfor %}
+            </div>
+          
+          {% elif question.question_type == 'dropdown' %}
+            <select class="select select-bordered select-sm w-full" disabled>
+              <option>Select an option...</option>
+              {% for option in question.options %}
+                <option>{{ option }}</option>
+              {% endfor %}
+            </select>
+          
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="alert alert-info">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+      <span>This form has no questions yet.</span>
+    </div>
+  {% endif %}
+
+  <!-- Action buttons for admins/managers -->
+  {% if request.user.role == 'admin' or request.user.role == 'manager' %}
+    <div class="flex gap-4 mt-6">
+      <button class="btn btn-sm bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f]">
+        Edit Form
+      </button>
+      <button class="btn btn-sm btn-error text-white">
+        Delete Form
+      </button>
+    </div>
+  {% endif %}
+</div>
