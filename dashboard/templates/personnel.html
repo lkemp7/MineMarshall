@@ -1,7 +1,27 @@
-{% extends 'base.html' %}
-{% block content %}
+{% extends 'base.html' %} {% block content %}
 
 <div id="contractor-list">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-4xl text-[#F79327]">Personnel</h1>
+    {% if request.user.role == 'admin' or request.user.role == 'manager' %}
+    <<button class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]"
+      onclick="document.getElementById('addUserModal').showModal()"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-5 w-5 mr-2"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+      >
+        <path
+          d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z"
+        />
+      </svg>
+      Add User
+    </button>
+    {% endif %}
+  </div>
+
   {% if users %}
   <div class="overflow-x-auto">
     <table class="table table-zebra table-pin-rows">

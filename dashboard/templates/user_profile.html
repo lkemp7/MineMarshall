@@ -20,9 +20,16 @@
 {% block content %}
   <!-- pad for avatar, center and constrain width -->
   <div class="pt-[calc(8rem+1rem)] max-w-6xl mx-auto px-2">
-    <h1 class="text-4xl text-[#F79327] mb-2">
-      {{ user_obj.first_name }} {{ user_obj.last_name }}
-    </h1>
+    <div class="flex items-center justify-between mb-2">
+      <h1 class="text-4xl text-[#F79327]">
+        {{ user_obj.first_name }} {{ user_obj.last_name }}
+      </h1>
+      {% if request.user.role == 'admin' or request.user.role == 'manager' %}
+        <<button class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]" onclick="document.getElementById('editProfileModal').showModal()">
+          Edit Profile
+        </button>
+      {% endif %}
+    </div>
     <p class="opacity-70 mb-6">{{ user_obj.email }}</p>
 
     <!-- Two-column layout (stacks on mobile) -->
@@ -140,4 +147,78 @@
       </div>
     </div>
   </div>
+
+  <!-- Edit Profile Modal -->
+  {% if request.user.role == 'admin' or request.user.role == 'manager' %}
+  <dialog id="editProfileModal" class="modal">
+    <div class="modal-box max-w-2xl">
+      <h3 class="font-bold text-lg mb-4">Edit Profile</h3>
+      <form method="post" action="{% url 'edit_user_profile' user_obj.pk %}">
+        {% csrf_token %}
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Basic Info -->
+          <div class="form-control">
+            <label class="label"><span class="label-text">First Name</span></label>
+            <input type="text" name="first_name" value="{{ user_obj.first_name }}" class="input input-bordered" required />
+          </div>
+          
+          <div class="form-control">
+            <label class="label"><span class="label-text">Last Name</span></label>
+            <input type="text" name="last_name" value="{{ user_obj.last_name }}" class="input input-bordered" required />
+          </div>
+          
+          <div class="form-control">
+            <label class="label"><span class="label-text">Email</span></label>
+            <input type="email" name="email" value="{{ user_obj.email }}" class="input input-bordered" required />
+          </div>
+          
+          <div class="form-control">
+            <label class="label"><span class="label-text">Phone Number</span></label>
+            <input type="text" name="phone_number" value="{{ user_obj.phone_number }}" class="input input-bordered" />
+          </div>
+          
+          <!-- Worker Profile Fields -->
+          <div class="form-control">
+            <label class="label"><span class="label-text">Date of Birth</span></label>
+            <input type="date" name="dob" value="{{ user_obj.worker_profile.dob|date:'Y-m-d' }}" class="input input-bordered" />
+          </div>
+          
+          <div class="form-control">
+            <label class="label"><span class="label-text">Role</span></label>
+            <input type="text" name="worker_role" value="{{ user_obj.worker_profile.role }}" class="input input-bordered" />
+          </div>
+          
+          <div class="form-control">
+            <label class="label"><span class="label-text">Project</span></label>
+            <input type="text" name="project" value="{{ user_obj.worker_profile.project }}" class="input input-bordered" />
+          </div>
+          
+          <div class="form-control">
+            <label class="label"><span class="label-text">Employer</span></label>
+            <input type="text" name="employer" value="{{ user_obj.worker_profile.employer }}" class="input input-bordered" />
+          </div>
+          
+          <div class="form-control">
+            <label class="label"><span class="label-text">Emergency Contact Name</span></label>
+            <input type="text" name="emergency_contact_name" value="{{ user_obj.worker_profile.emergency_contact_name }}" class="input input-bordered" />
+          </div>
+          
+          <div class="form-control">
+            <label class="label"><span class="label-text">Emergency Contact Mobile</span></label>
+            <input type="text" name="emergency_contact_mobile" value="{{ user_obj.worker_profile.emergency_contact_mobile }}" class="input input-bordered" />
+          </div>
+        </div>
+        
+        <div class="modal-action">
+          <button type="button" class="btn" onclick="document.getElementById('editProfileModal').close()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+  {% endif %}
 {% endblock %}
