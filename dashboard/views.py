@@ -159,9 +159,9 @@ def edit_user_profile(request, pk):
         profile.save()
         
         messages.success(request, f'Profile updated for {user_obj.first_name} {user_obj.last_name}')
-        return redirect('user_profile', pk=pk)
+        return redirect('user_profile', user_id=pk)
     
-    return redirect('user_profile', pk=pk)
+    return redirect('user_profile', user_id=pk)
 
 @login_required
 def save_credential(request, pk):
