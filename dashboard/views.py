@@ -32,32 +32,6 @@ def dashboard(request):
     return render(request, 'dashboard.html', context)
 
 
-@login_required
-def create_form(request):
-    # Only allow this exact user to create forms for now
-    if request.user.email.lower() != "admin@minemarshall.com":
-        return HttpResponseForbidden("You are not allowed to create forms.")
-
-    if request.method == "POST":
-        title = request.POST.get("title", "").strip() or "Untitled Form"
-        try:
-            num_questions = int(request.POST.get("num_questions", "0"))
-        except ValueError:
-            num_questions = 0
-
-        # Create the form
-        form_obj = Form.objects.create(title=title, created_by=request.user)
-
-        # Create questions
-        for i in range(1, num_questions + 1):
-            q_text = (request.POST.get(f"question_{i}", "") or "").strip()
-            if q_text:
-                Question.objects.create(form=form_obj, text=q_text, order=i)
-
-        return redirect("my_forms")
-
-    return render(request, "create_form.html", {})
-
 
 @login_required
 def my_forms(request):
