@@ -1,8 +1,87 @@
-{% extends "base.html" %}
+{% extends "base.html" %} {% block content %}
+<div class="max-w-6xl mx-auto">
+  <h1 class="text-4xl text-[#F79327] mb-6">Dashboard</h1>
 
-{% block content %}
-<div>
-  <h1 class="text-4xl text-[#F79327] mb-4">Dashboard</h1>
-  
+  {% if users_with_expired %}
+  <div class="alert mb-6 bg-[#F79327] bg-opacity-20 border-[#F79327]">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      class="stroke-current shrink-0 h-6 w-6 text-[#F79327]"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+      />
+    </svg>
+    <span class="text-[#F79327]"
+      ><strong>{{ users_with_expired|length }}</strong> user(s) with expired
+      credentials</span
+    >
+  </div>
+
+  <div class="space-y-4">
+    {% for item in users_with_expired %}
+    <div class="card bg-base-200">
+      <div class="card-body">
+        <div class="flex items-center justify-between">
+          <h2 class="card-title">
+            <a
+              href="{% url 'user_profile' item.user.id %}"
+              class="link link-hover"
+            >
+              {{ item.user.first_name }} {{ item.user.last_name }}
+            </a>
+          </h2>
+          <span class="badge badge-error"
+            >{{ item.expired_credentials.count }} Expired</span
+          >
+        </div>
+
+        <div class="overflow-x-auto mt-2">
+          <table class="table table-compact w-full">
+            <thead>
+              <tr>
+                <th>Credential</th>
+                <th>Expiry Date</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for cred in item.expired_credentials %}
+              <tr>
+                <td>{{ cred.title }}</td>
+                <td>{{ cred.expiry_date|date:"Y-m-d" }}</td>
+                <td><span class="badge badge-error">Expired</span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="alert alert-success">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      class="stroke-current shrink-0 h-6 w-6"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>
+    <span>All credentials are up to date!</span>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

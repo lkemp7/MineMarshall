@@ -7,23 +7,21 @@
     <table class="table table-zebra table-pin-rows">
       <thead>
         <tr>
-          <th>First Name</th>
-          <th>Last Name</th>
+          <th>Name</th>
           <th>Email</th>
           <th>Phone Number</th>
         </tr>
       </thead>
       <tbody>
         {% for x in users %}
-        <tr>
+       <tr class="cursor-pointer hover:!bg-[#F79327] hover:!bg-opacity-20" onclick="window.location='{% url 'user_profile' x.id %}'">
           <td>
-            <a href="{% url 'user_profile' x.id %}" class="link">
-              {{ x.first_name }}
+              {{ x.last_name }}, {{ x.first_name }}
             </a>
           </td>
-          <td>{{ x.last_name }}</td>
           <td>{{ x.email }}</td>
           <td>{{ x.phone_number }}</td>
+          <td>{{ x.get_role_display }}</td>
         </tr>
         {% endfor %}
       </tbody>

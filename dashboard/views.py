@@ -6,11 +6,29 @@ from django.http import HttpResponseForbidden
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_POST
 from .services import create_or_update_user_from_post
+from dashboard.models import Credential
+from django.utils import timezone
 
 @login_required
 def dashboard(request):
-    users = CustomUser.objects.all()
-    context = {'users': users}
+    users_with_expired = []
+    today = timezone.now().date()
+    
+    for user in CustomUser.objects.all():
+        # Filter credentials where expiry_date is in the past
+        expired_creds = user.credentials.filter(
+            expiry_date__lt=today,
+            expiry_date__isnull=False
+        )
+        if expired_creds.exists():
+            users_with_expired.append({
+                'user': user,
+                'expired_credentials': expired_creds
+            })
+    
+    context = {
+        'users_with_expired': users_with_expired,
+    }
     return render(request, 'dashboard.html', context)
 
 
