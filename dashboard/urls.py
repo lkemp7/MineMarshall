@@ -17,4 +17,7 @@ urlpatterns = [
     path('personnel/<int:pk>/credential/', views.save_credential, name='save_credential'),
     path('forms/create/', views.create_form, name='create_form'),
     path('forms/add-question/', views.add_question_field, name='add_question_field'),
+    path('forms/<int:pk>/delete/', views.delete_form, name='delete_form'),
+    path('forms/<int:pk>/edit-data/', views.edit_form_data, name='edit_form_data'),
+    path('forms/<int:pk>/update/', views.update_form, name='update_form'),
 ]

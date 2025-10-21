@@ -2,7 +2,7 @@ from django.contrib.auth.decorators import login_required
 from accounts.models import CustomUser
 from django.contrib import messages
 from .models import Form, Question
-from django.http import HttpResponse, HttpResponseForbidden
+from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_POST
 from .services import create_or_update_user_from_post
@@ -383,9 +383,103 @@ def create_form(request):
                 )
                 order += 1
         
-        # Close modal and refresh page via HTMX
+        # Return HTMX redirect response
         response = HttpResponse()
-        response['HX-Redirect'] = f'/dashboard/forms/{form.pk}/'
+        response['HX-Redirect'] = f'/dashboard/forms/mine/'
+        return response
+    
+    return HttpResponse(status=405)
+
+@login_required
+def delete_form(request, pk):
+    if request.user.role not in ['admin', 'manager']:
+        messages.error(request, 'You do not have permission to delete forms.')
+        return redirect('my_forms')
+    
+    form_obj = get_object_or_404(Form, pk=pk, created_by=request.user)
+    
+    if request.method == 'POST':
+        form_title = form_obj.title
+        form_obj.delete()
+        messages.success(request, f'Form "{form_title}" has been deleted.')
+        return redirect('my_forms')
+    
+    return redirect('my_forms')
+
+@login_required
+def edit_form_data(request, pk):
+    """Return form data as JSON for editing"""
+    if request.user.role not in ['admin', 'manager']:
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+    
+    form_obj = get_object_or_404(Form, pk=pk, created_by=request.user)
+    questions = form_obj.questions.all().order_by('order')
+    
+    data = {
+        'id': form_obj.pk,
+        'title': form_obj.title,
+        'description': form_obj.description,
+        'questions': [
+            {
+                'text': q.question_text,
+                'type': q.question_type,
+                'options': q.options_text,
+                'required': q.is_required,
+            }
+            for q in questions
+        ]
+    }
+    
+    return JsonResponse(data)
+
+@login_required
+def update_form(request, pk):
+    if request.user.role not in ['admin', 'manager']:
+        return HttpResponse(status=403)
+    
+    form_obj = get_object_or_404(Form, pk=pk, created_by=request.user)
+    
+    if request.method == 'POST':
+        # Update basic info
+        form_obj.title = request.POST.get('title', 'Untitled Form')
+        form_obj.description = request.POST.get('description', '')
+        form_obj.save()
+        
+        # Delete existing questions
+        form_obj.questions.all().delete()
+        
+        # Process questions (same as create)
+        questions_data = {}
+        for key, value in request.POST.items():
+            if key.startswith('questions['):
+                parts = key.split('[')
+                if len(parts) >= 3:
+                    uuid = parts[1].rstrip(']')
+                    field = parts[2].rstrip(']')
+                    
+                    if uuid not in questions_data:
+                        questions_data[uuid] = {}
+                    questions_data[uuid][field] = value
+        
+        # Create Question objects
+        order = 1
+        for uuid, data in questions_data.items():
+            if 'text' in data and data['text']:
+                Question.objects.create(
+                    form=form_obj,
+                    question_text=data.get('text', ''),
+                    question_type=data.get('type', 'text'),
+                    options_text=data.get('options', ''),
+                    is_required=data.get('required') == 'on',
+                    order=order
+                )
+                order += 1
+        
+        messages.success(request, f'Form "{form_obj.title}" updated successfully!')
+        
+        # Reset modal state via JavaScript
+        response = HttpResponse()
+        response['HX-Redirect'] = '/dashboard/forms/mine/'
         return response
     
     return HttpResponse(status=405)
