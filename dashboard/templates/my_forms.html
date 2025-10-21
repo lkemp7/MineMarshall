@@ -1,13 +1,255 @@
 {% extends "base.html" %}
-
 {% block content %}
-<div class="mb-6">
-  <h1 class="text-4xl text-[#F79327] mb-3">Forms</h1>
-  <button class="btn btn-primary" onclick="document.getElementById('demoAuthModal').showModal()">
-    Default Form
-  </button>
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-4xl text-[#F79327]">My Forms</h1>
+  {% if request.user.role == 'admin' or request.user.role == 'manager' %}
+    <button class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f]" 
+            onclick="document.getElementById('createFormModal').showModal()">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+      </svg>
+      Create New Form
+    </button>
+  {% endif %}
 </div>
 
+<!-- Default Form at the top -->
+<div class="mb-6">
+  <h2 class="text-lg font-semibold mb-2 opacity-70">Default Form</h2>
+  <ul class="menu bg-base-200 w-full max-w-3xl rounded-box">
+    <li>
+      <a href="#" onclick="document.getElementById('demoAuthModal').showModal()">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z" clip-rule="evenodd" />
+        </svg>
+        <span class="font-semibold">Default Form</span>
+        <span class="badge badge-primary">Default</span>
+      </a>
+    </li>
+  </ul>
+</div>
 {% include "forms/default_form.html" %}
 
+{% if forms %}
+<ul class="menu bg-base-200 w-full max-w-3xl rounded-box">
+  {% for f in forms %}
+  <li>
+    <a href="#" 
+       hx-get="{% url 'view_form' f.pk %}" 
+       hx-target="#viewFormModalContent" 
+       hx-swap="innerHTML"
+       onclick="document.getElementById('viewFormModal').showModal()">
+      <span class="font-semibold">{{ f.title }}</span>
+      <span class="opacity-60 text-sm">— {{ f.created_at|date:"Y-m-d H:i" }}</span>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="opacity-70">
+  No forms yet.
+  {% if request.user.role == 'admin' or request.user.role == 'manager' %}
+    Click "Create New Form" to get started.
+  {% endif %}
+</p>
+{% endif %}
+
+<!-- View Form Modal -->
+<dialog id="viewFormModal" class="modal">
+  <div class="modal-box w-11/12 max-w-4xl h-[80vh] flex flex-col">
+    <div class="flex-1 overflow-y-auto pr-2" id="viewFormModalContent">
+      <!-- Form content loads here via HTMX -->
+      <div class="flex items-center justify-center h-full">
+        <span class="loading loading-spinner loading-lg text-[#F79327]"></span>
+      </div>
+    </div>
+    
+    <div class="modal-action mt-4 pt-4 border-t">
+      <button type="button" class="btn" onclick="document.getElementById('viewFormModal').close()">
+        Close
+      </button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
+
+<!-- Create Form Modal -->
+{% if request.user.role == 'admin' or request.user.role == 'manager' %}
+<dialog id="createFormModal" class="modal">
+  <div class="modal-box w-11/12 max-w-4xl h-[80vh] flex flex-col">
+    <h3 class="font-bold text-lg mb-4">Create New Form</h3>
+    
+    <div class="flex-1 overflow-y-auto pr-2">
+      <form method="post" action="{% url 'create_form' %}"
+            hx-post="{% url 'create_form' %}"
+            hx-swap="none"
+            id="formBuilderForm">
+        {% csrf_token %}
+        
+        <!-- Form Basic Info -->
+        <div class="space-y-4 mb-6">
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-semibold">Form Title</span>
+            </label>
+            <input name="title" type="text" placeholder="Enter form title" 
+                   class="input input-bordered w-full" required />
+          </div>
+
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-semibold">Description (Optional)</span>
+            </label>
+            <textarea name="description" class="textarea textarea-bordered" 
+                      placeholder="Enter form description"></textarea>
+          </div>
+        </div>
+
+        <!-- Questions Section -->
+        <div class="mb-6">
+          <div class="flex items-center justify-between mb-4">
+            <h4 class="font-semibold text-lg">Questions</h4>
+            <button type="button" 
+                    hx-get="{% url 'add_question_field' %}" 
+                    hx-target="#form-questions" 
+                    hx-swap="beforeend"
+                    class="btn btn-sm bg-[#F79327] border-[#F79327] text-white">
+              + Add Question
+            </button>
+          </div>
+          
+          <div id="form-questions" class="space-y-4">
+            <!-- Questions will be added here via HTMX -->
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="modal-action mt-4 pt-4 border-t">
+      <button type="button" class="btn" onclick="document.getElementById('createFormModal').close(); document.getElementById('formBuilderForm').reset(); document.getElementById('form-questions').innerHTML = '';">
+        Cancel
+      </button>
+      <button type="submit" form="formBuilderForm" class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f]">
+        Create Form
+      </button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button onclick="document.getElementById('formBuilderForm').reset(); document.getElementById('form-questions').innerHTML = '';">close</button>
+  </form>
+</dialog>
+{% endif %}
+
+<script>
+  function removeQuestion(button) {
+    button.closest('.question-card').remove();
+  }
+
+  function toggleOptions(select, questionNum) {
+    const optionsDiv = document.getElementById(`options-${questionNum}`);
+    const type = select.value;
+    if (['radio', 'checkbox', 'dropdown'].includes(type)) {
+      optionsDiv.style.display = 'block';
+    } else {
+      optionsDiv.style.display = 'none';
+    }
+  }
+
+  // Load form data for editing
+  function loadEditForm(formId) {
+    // Close view modal
+    document.getElementById('viewFormModal').close();
+    
+    // Fetch form data and populate create modal
+    fetch(`/dashboard/forms/${formId}/edit-data/`)
+      .then(response => response.json())
+      .then(data => {
+        // Update modal title
+        document.querySelector('#createFormModal h3').textContent = 'Edit Form';
+        
+        // Update form action
+        const form = document.getElementById('formBuilderForm');
+        form.action = `/dashboard/forms/${formId}/update/`;
+        
+        // Populate title and description
+        form.querySelector('[name="title"]').value = data.title;
+        form.querySelector('[name="description"]').value = data.description || '';
+        
+        // Clear existing questions
+        document.getElementById('form-questions').innerHTML = '';
+        
+        // Add existing questions
+        let questionsLoaded = 0;
+        data.questions.forEach((question, index) => {
+          // Trigger HTMX to add a question field
+          fetch('/dashboard/forms/add-question/')
+            .then(response => response.text())
+            .then(html => {
+              const container = document.getElementById('form-questions');
+              const tempDiv = document.createElement('div');
+              tempDiv.innerHTML = html.trim();
+              const questionCard = tempDiv.firstElementChild;
+              container.appendChild(questionCard);
+              
+              // Get the UUID from the question card
+              const textInput = questionCard.querySelector('input[type="text"]');
+              const nameMatch = textInput.name.match(/questions\[([^\]]+)\]\[text\]/);
+              if (nameMatch) {
+                const uuid = nameMatch[1];
+                
+                // Populate the question data
+                questionCard.querySelector(`[name="questions[${uuid}][text]"]`).value = question.text;
+                const typeSelect = questionCard.querySelector(`[name="questions[${uuid}][type]"]`);
+                typeSelect.value = question.type;
+                questionCard.querySelector(`[name="questions[${uuid}][required]"]`).checked = question.required;
+                
+                if (question.options) {
+                  questionCard.querySelector(`[name="questions[${uuid}][options]"]`).value = question.options;
+                }
+                
+                // Trigger toggle to show/hide options
+                toggleOptions(typeSelect, uuid);
+              }
+              
+              questionsLoaded++;
+              // Open modal after all questions are loaded
+              if (questionsLoaded === data.questions.length) {
+                setTimeout(() => {
+                  document.getElementById('createFormModal').showModal();
+                }, 100);
+              }
+            });
+        });
+        
+        // If no questions, just open the modal
+        if (data.questions.length === 0) {
+          setTimeout(() => {
+            document.getElementById('createFormModal').showModal();
+          }, 100);
+        }
+        
+        // Update submit button text
+        document.querySelector('#createFormModal button[type="submit"]').textContent = 'Save Changes';
+      })
+      .catch(error => {
+        console.error('Error loading form data:', error);
+        alert('Error loading form data. Please try again.');
+      });
+  }
+
+  // Reset create modal to create mode
+  function resetCreateModal() {
+    document.querySelector('#createFormModal h3').textContent = 'Create New Form';
+    const form = document.getElementById('formBuilderForm');
+    form.action = '{% url "create_form" %}';
+    form.reset();
+    document.getElementById('form-questions').innerHTML = '';
+    document.querySelector('#createFormModal button[type="submit"]').textContent = 'Create Form';
+  }
+
+  // Reset on modal close
+  document.getElementById('createFormModal').addEventListener('close', resetCreateModal);
+</script>
 {% endblock %}
