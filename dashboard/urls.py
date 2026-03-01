@@ -20,4 +20,12 @@ urlpatterns = [
     path('forms/<int:pk>/delete/', views.delete_form, name='delete_form'),
     path('forms/<int:pk>/edit-data/', views.edit_form_data, name='edit_form_data'),
     path('forms/<int:pk>/update/', views.update_form, name='update_form'),
+    path("projects/home/", views.projects_home, name="projects_home"),
+    path("projects/", views.projects, name="projects"),
+    path("projects/mine/", views.my_projects, name="my_projects"),
+    path("projects/<int:pk>/", views.project_detail, name="project_detail"),
+    path("projects/<int:pk>/roles/add/", views.add_project_role, name="add_project_role"),
+    path("projects/<int:project_pk>/roles/<int:role_pk>/update-form/", views.update_project_role_form, name="update_project_role_form"),
+    path("projects/<int:project_pk>/roles/<int:role_pk>/invite/", views.invite_users_to_project_role, name="invite_users_to_project_role"),
+    path("project-invites/<int:invite_id>/form/", views.project_invite_form, name="project_invite_form"),
 ]

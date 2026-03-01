@@ -1,6 +1,12 @@
 from django.contrib import admin
 from accounts.models import CustomUser
 from .models import Form, Question
+from django.contrib import admin
+from .models import Project, ProjectRole, ProjectInvite
+
+admin.site.register(Project)
+admin.site.register(ProjectRole)
+admin.site.register(ProjectInvite)
 
 admin.site.register(CustomUser)
 

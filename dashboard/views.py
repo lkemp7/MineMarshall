@@ -11,6 +11,9 @@ from django.utils import timezone
 from django.contrib import messages
 from django.template.loader import render_to_string
 import uuid
+from django.db import transaction
+from django.db.models import Prefetch
+from .models import FormAssignment, FormSubmission, Answer, Project, ProjectRole, ProjectInvite
 
 @login_required
 def dashboard(request):
@@ -483,3 +486,289 @@ def update_form(request, pk):
         return response
     
     return HttpResponse(status=405)
+
+### Project setup
+
+def _is_admin_or_manager(user):
+    return getattr(user, "role", None) in ["admin", "manager"]
+
+
+@login_required
+def projects_home(request):
+    """Single sidebar entry point: admin/manager sees admin projects, user sees invites."""
+    if _is_admin_or_manager(request.user):
+        return redirect("projects")
+    return redirect("my_projects")
+
+
+@login_required
+def projects(request):
+    """Admin/Manager project list + create."""
+    if not _is_admin_or_manager(request.user):
+        messages.error(request, "You do not have permission to view projects.")
+        return redirect("dashboard")
+
+    if request.method == "POST":
+        title = (request.POST.get("title") or "").strip()
+        description = (request.POST.get("description") or "").strip()
+        start_date = request.POST.get("start_date")
+        end_date = request.POST.get("end_date") or None
+
+        if not title:
+            messages.error(request, "Project title is required.")
+            return redirect("projects")
+
+        if not start_date:
+            messages.error(request, "Project start date is required.")
+            return redirect("projects")
+
+        if end_date and end_date < start_date:
+            messages.error(request, "End date cannot be before start date.")
+            return redirect("projects")
+
+        project = Project.objects.create(
+            title=title,
+            description=description,
+            start_date=start_date,
+            end_date=end_date,
+            created_by=request.user,
+        )
+        messages.success(request, f'Project "{project.title}" created successfully.')
+        return redirect("project_detail", pk=project.pk)
+
+    projects_qs = Project.objects.all().prefetch_related("roles").order_by("-created_at")
+    return render(request, "projects.html", {"projects": projects_qs})
+
+
+@login_required
+def project_detail(request, pk):
+    """Admin/Manager page to manage project roles, forms, and invites."""
+    if not _is_admin_or_manager(request.user):
+        messages.error(request, "You do not have permission to manage projects.")
+        return redirect("dashboard")
+
+    project = get_object_or_404(
+        Project.objects.prefetch_related(
+            Prefetch("roles", queryset=ProjectRole.objects.select_related("required_form")),
+            Prefetch("invites", queryset=ProjectInvite.objects.select_related("user", "project_role", "project_role__required_form")),
+        ),
+        pk=pk,
+    )
+
+    forms = Form.objects.filter(is_active=True).order_by("title")
+    users = CustomUser.objects.all().order_by("first_name", "last_name", "email")
+
+    return render(
+        request,
+        "project_detail.html",
+        {
+            "project": project,
+            "forms": forms,
+            "users": users,
+        },
+    )
+
+
+@login_required
+@require_POST
+def add_project_role(request, pk):
+    if not _is_admin_or_manager(request.user):
+        return HttpResponseForbidden("Permission denied")
+
+    project = get_object_or_404(Project, pk=pk)
+    title = (request.POST.get("role_title") or "").strip()
+    form_id = request.POST.get("required_form_id") or None
+
+    if not title:
+        messages.error(request, "Role title is required.")
+        return redirect("project_detail", pk=project.pk)
+
+    required_form = None
+    if form_id:
+        required_form = get_object_or_404(Form, pk=form_id)
+
+    role_obj, created = ProjectRole.objects.get_or_create(
+        project=project,
+        title=title,
+        defaults={"required_form": required_form},
+    )
+
+    if not created:
+        # If role exists, optionally update form
+        role_obj.required_form = required_form
+        role_obj.save()
+        messages.success(request, f'Updated role "{role_obj.title}".')
+    else:
+        messages.success(request, f'Added role "{role_obj.title}".')
+
+    return redirect("project_detail", pk=project.pk)
+
+
+@login_required
+@require_POST
+def update_project_role_form(request, project_pk, role_pk):
+    if not _is_admin_or_manager(request.user):
+        return HttpResponseForbidden("Permission denied")
+
+    role_obj = get_object_or_404(ProjectRole, pk=role_pk, project_id=project_pk)
+    form_id = request.POST.get("required_form_id") or None
+
+    if form_id:
+        role_obj.required_form = get_object_or_404(Form, pk=form_id)
+    else:
+        role_obj.required_form = None
+
+    role_obj.save()
+    messages.success(request, f'Updated required form for role "{role_obj.title}".')
+    return redirect("project_detail", pk=project_pk)
+
+
+@login_required
+@require_POST
+def invite_users_to_project_role(request, project_pk, role_pk):
+    if not _is_admin_or_manager(request.user):
+        return HttpResponseForbidden("Permission denied")
+
+    role_obj = get_object_or_404(
+        ProjectRole.objects.select_related("project", "required_form"),
+        pk=role_pk,
+        project_id=project_pk,
+    )
+
+    user_ids = request.POST.getlist("user_ids")
+    if not user_ids:
+        messages.error(request, "Please select at least one user to invite.")
+        return redirect("project_detail", pk=project_pk)
+
+    created_count = 0
+    updated_count = 0
+
+    with transaction.atomic():
+        for uid in user_ids:
+            user = CustomUser.objects.filter(pk=uid).first()
+            if not user:
+                continue
+
+            invite, created = ProjectInvite.objects.get_or_create(
+                project=role_obj.project,
+                project_role=role_obj,
+                user=user,
+                defaults={"invited_by": request.user, "status": "pending"},
+            )
+
+            if created:
+                created_count += 1
+            else:
+                # Refresh existing invite back to pending if re-inviting (unless completed)
+                if invite.status != "completed":
+                    invite.status = "pending"
+                    invite.invited_by = request.user
+                    invite.viewed_at = None
+                    invite.save()
+                    updated_count += 1
+
+            # If role has a required form, create/ensure assignment exists
+            if role_obj.required_form:
+                FormAssignment.objects.get_or_create(
+                    form=role_obj.required_form,
+                    user=user,
+                    defaults={"assigned_by": request.user},
+                )
+
+    msg_parts = []
+    if created_count:
+        msg_parts.append(f"{created_count} invite(s) sent")
+    if updated_count:
+        msg_parts.append(f"{updated_count} invite(s) re-sent")
+    if not msg_parts:
+        msg_parts.append("No new invites were created")
+
+    messages.success(request, f"{' and '.join(msg_parts)} for role {role_obj.title}.")
+    return redirect("project_detail", pk=project_pk)
+
+
+@login_required
+def my_projects(request):
+    """User-facing invites list."""
+    invites = (
+        ProjectInvite.objects
+        .filter(user=request.user)
+        .select_related("project", "project_role", "project_role__required_form")
+        .order_by("-invited_at")
+    )
+    return render(request, "my_projects.html", {"invites": invites})
+
+
+@login_required
+def project_invite_form(request, invite_id):
+    """User fills out the required form attached to the invite role."""
+    invite = get_object_or_404(
+        ProjectInvite.objects.select_related("project", "project_role", "project_role__required_form", "user"),
+        pk=invite_id,
+        user=request.user,
+    )
+
+    required_form = invite.project_role.required_form
+    if not required_form:
+        messages.error(request, "No required form has been configured for this role yet.")
+        return redirect("my_projects")
+
+    # Mark as viewed
+    if invite.status == "pending":
+        invite.status = "viewed"
+        invite.viewed_at = timezone.now()
+        invite.save(update_fields=["status", "viewed_at"])
+
+    questions = required_form.questions.all().order_by("order")
+
+    if request.method == "POST":
+        with transaction.atomic():
+            submission = FormSubmission.objects.create(
+                form=required_form,
+                user=request.user,
+            )
+
+            for q in questions:
+                key = f"question_{q.id}"
+
+                if q.question_type == "checkbox":
+                    values = request.POST.getlist(key)
+                    answer_value = ", ".join(values)
+                else:
+                    answer_value = request.POST.get(key, "")
+
+                # Very basic required validation
+                if q.is_required and not answer_value:
+                    messages.error(request, f'Question "{q.question_text}" is required.')
+                    submission.delete()
+                    return redirect("project_invite_form", invite_id=invite.id)
+
+                Answer.objects.create(
+                    submission=submission,
+                    question=q,
+                    answer_text=answer_value or "",
+                )
+
+            # Mark invite completed
+            invite.status = "completed"
+            invite.completed_at = timezone.now()
+            invite.save(update_fields=["status", "completed_at"])
+
+            # Mark form assignment completed if it exists
+            FormAssignment.objects.filter(form=required_form, user=request.user).update(
+                completed=True,
+                completed_at=timezone.now(),
+            )
+
+        messages.success(request, f'Form "{required_form.title}" submitted successfully.')
+        return redirect("my_projects")
+
+    return render(
+        request,
+        "project_invite_form.html",
+        {
+            "invite": invite,
+            "form_obj": required_form,
+            "questions": questions,
+        },
+    )

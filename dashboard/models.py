@@ -51,20 +51,6 @@ class Credential(models.Model):
     def __str__(self):
         return f"{self.title} ({'Required' if self.required else 'Optional'})"
 
-class Question(models.Model):
-    form = models.ForeignKey(
-        Form,
-        on_delete=models.CASCADE,
-        related_name="questions",
-    )
-    text = models.CharField(max_length=500)
-    order = models.PositiveIntegerField(default=1)
-
-    class Meta:
-        ordering = ["order"]
-
-    def __str__(self):
-        return f"Q{self.order}: {self.text[:50]}"
     
 class Question(models.Model):
     QUESTION_TYPES = [
@@ -131,3 +117,85 @@ class Answer(models.Model):
     
     def __str__(self):
         return f"{self.submission.user.email} - {self.question.question_text[:30]}"
+
+
+
+class Project(models.Model):
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="created_projects",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def is_indefinite(self):
+        return self.end_date is None
+
+    def __str__(self):
+        return self.title
+
+
+class ProjectRole(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="roles")
+    title = models.CharField(max_length=200)
+    required_form = models.ForeignKey(
+        Form,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="project_roles",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ["project", "title"]
+        ordering = ["title"]
+
+    def __str__(self):
+        return f"{self.project.title} - {self.title}"
+
+
+class ProjectInvite(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("viewed", "Viewed"),
+        ("completed", "Completed"),
+        ("declined", "Declined"),
+    ]
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="invites")
+    project_role = models.ForeignKey(
+        ProjectRole,
+        on_delete=models.CASCADE,
+        related_name="invites",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="project_invites",
+    )
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="project_invites_sent",
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    invited_at = models.DateTimeField(auto_now_add=True)
+    viewed_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ["project_role", "user"]
+        ordering = ["-invited_at"]
+
+    def __str__(self):
+        return f"{self.user.email} invited to {self.project.title} as {self.project_role.title}"
+

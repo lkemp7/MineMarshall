@@ -18,6 +18,11 @@ class="btn w-full justify-start {% if current == 'my_forms' %}btn-primary{% else
 Forms
 </a>
 
+<a href="{% url 'projects_home' %}"
+class="btn w-full justify-start {% if request.resolver_match.url_name == 'projects' or request.resolver_match.url_name == 'projects_home' or request.resolver_match.url_name == 'project_detail' or request.resolver_match.url_name == 'my_projects' or request.resolver_match.url_name == 'project_invite_form' %}btn-primary{% else %}btn-ghost{% endif %}">
+Projects
+</a>
+
 {% if request.user.role == 'admin' or request.user.role == 'manager' %}
 <a href="{% url 'metrics' %}"
 class="btn w-full justify-start {% if request.resolver_match.url_name == 'metrics' %}btn-primary{% else %}btn-ghost{% endif %}">
