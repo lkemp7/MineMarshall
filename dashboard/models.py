@@ -3,6 +3,17 @@ from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 from django.utils import timezone
 
+LICENSE_PRESETS = [
+    ("driver_licence", "Driver Licence"),
+    ("bus_licence", "Bus Licence"),
+    ("passport", "Passport"),
+    ("blue_card", "Blue Card"),
+    ("forklift_licence", "Forklift Licence"),
+    ("additional", "Additional Licence"),
+]
+
+LICENSE_PRESET_LABELS = dict(LICENSE_PRESETS)
+
 class Form(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)  # Add this line
@@ -41,12 +52,27 @@ class Credential(models.Model):
     issue_date = models.DateField(null=True, blank=True)
     expiry_date = models.DateField(null=True, blank=True)
     required = models.BooleanField(default=False)
+    image = models.ImageField(upload_to="credentials/%Y/%m/", null=True, blank=True)
 
     @property
     def status(self):
         if not self.issue_date or not self.expiry_date:
             return "TBA"
         return "Expired" if self.expiry_date < timezone.localdate() else "Compliant"
+
+    @property
+    def is_additional(self):
+        preset_titles = {
+            "Driver Licence",
+            "Bus Licence",
+            "Passport",
+            "Blue Card",
+            "Forklift Licence",
+            "Site Induction",
+            "Medical",
+            "Photo ID",
+        }
+        return self.title not in preset_titles
 
     def __str__(self):
         return f"{self.title} ({'Required' if self.required else 'Optional'})"
@@ -65,12 +91,13 @@ class Question(models.Model):
         ('checkbox', 'Multiple Choice (Multiple)'),
         ('dropdown', 'Dropdown'),
         ('file', 'File Upload'),
+        ('license_upload', 'Licence Image Upload'),
     ]
     
     form = models.ForeignKey(Form, on_delete=models.CASCADE, related_name='questions')
     question_text = models.TextField(default=" ")
     question_type = models.CharField(max_length=20, choices=QUESTION_TYPES, default='text')
-    options_text = models.TextField(blank=True, null=True, help_text="For multiple choice: one option per line")
+    options_text = models.TextField(blank=True, null=True, help_text="For multiple choice or licence label")
     is_required = models.BooleanField(default=True)
     order = models.IntegerField(default=0)
     
@@ -82,7 +109,6 @@ class Question(models.Model):
     
     @property
     def options(self):
-        """Split options_text into a list"""
         if self.options_text:
             return [opt.strip() for opt in self.options_text.split('\n') if opt.strip()]
         return []
@@ -114,11 +140,30 @@ class Answer(models.Model):
     submission = models.ForeignKey(FormSubmission, on_delete=models.CASCADE, related_name='answers')
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
     answer_text = models.TextField(blank=True)
+    answer_file = models.ImageField(upload_to="form_answers/%Y/%m/", null=True, blank=True)
     
     def __str__(self):
         return f"{self.submission.user.email} - {self.question.question_text[:30]}"
 
+class SubmissionCredentialAttachment(models.Model):
+    submission = models.ForeignKey(
+        FormSubmission,
+        on_delete=models.CASCADE,
+        related_name="attached_credentials",
+    )
+    source_credential = models.ForeignKey(
+        Credential,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="submission_copies",
+    )
+    title = models.CharField(max_length=200)
+    image = models.ImageField(upload_to="submission_credential_copies/%Y/%m/")
+    created_at = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        return f"{self.submission.user.email} - {self.title}"
 
 class Project(models.Model):
     title = models.CharField(max_length=255)
@@ -198,4 +243,5 @@ class ProjectInvite(models.Model):
 
     def __str__(self):
         return f"{self.user.email} invited to {self.project.title} as {self.project_role.title}"
+
 

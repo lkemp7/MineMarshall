@@ -3,7 +3,12 @@ from accounts.models import CustomUser
 from .models import Form, Question
 from django.contrib import admin
 from .models import Project, ProjectRole, ProjectInvite
+from .models import Credential, Question, Answer, SubmissionCredentialAttachment
 
+admin.site.register(Credential)
+admin.site.register(Question)
+admin.site.register(Answer)
+admin.site.register(SubmissionCredentialAttachment)
 admin.site.register(Project)
 admin.site.register(ProjectRole)
 admin.site.register(ProjectInvite)

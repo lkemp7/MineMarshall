@@ -6,7 +6,6 @@ from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_POST
 from .services import create_or_update_user_from_post
-from dashboard.models import WorkerProfile, Credential
 from django.utils import timezone
 from django.contrib import messages
 from django.template.loader import render_to_string
@@ -14,6 +13,8 @@ import uuid
 from django.db import transaction
 from django.db.models import Prefetch
 from .models import FormAssignment, FormSubmission, Answer, Project, ProjectRole, ProjectInvite
+from .models import Form, Question, WorkerProfile, Credential, SubmissionCredentialAttachment,LICENSE_PRESETS,LICENSE_PRESET_LABELS
+
 
 @login_required
 def dashboard(request):
@@ -68,7 +69,20 @@ def personnel(request):
 def user_profile(request, user_id):
     user_qs = CustomUser.objects.prefetch_related("credentials").select_related("worker_profile")
     user_obj = get_object_or_404(user_qs, pk=user_id)
-    return render(request, "user_profile.html", {"user_obj": user_obj})
+
+    can_edit_credentials = (
+        request.user.role in ["admin", "manager"] or request.user.pk == user_obj.pk
+    )
+
+    return render(
+        request,
+        "user_profile.html",
+        {
+            "user_obj": user_obj,
+            "license_presets": LICENSE_PRESETS,
+            "can_edit_credentials": can_edit_credentials,
+        },
+    )
 
 @login_required
 def metrics(request):
@@ -131,7 +145,7 @@ def add_user(request):
                 )
             
             messages.success(request, f'User {user.first_name} {user.last_name} created successfully.')
-            return redirect('user_profile', pk=user.pk)
+            return redirect('user_profile', user_id=user.pk)
             
         except Exception as e:
             messages.error(request, f'Error creating user: {str(e)}')
@@ -176,34 +190,51 @@ def edit_user_profile(request, pk):
 
 @login_required
 def save_credential(request, pk):
-    if request.user.role not in ['admin', 'manager']:
-        messages.error(request, 'You do not have permission to edit credentials.')
-        return redirect('personnel')
-    
     user_obj = get_object_or_404(CustomUser, pk=pk)
-    
+
+    if request.user.role not in ['admin', 'manager'] and request.user.pk != user_obj.pk:
+        messages.error(request, 'You do not have permission to edit credentials.')
+        return redirect('user_profile', user_id=pk)
+
     if request.method == 'POST':
         credential_id = request.POST.get('credential_id')
-        
+
         if credential_id:
-            # Edit existing credential
             credential = get_object_or_404(Credential, id=credential_id, user=user_obj)
         else:
-            # Create new credential
             credential = Credential(user=user_obj)
-        
-        credential.title = request.POST.get('title')
+
+        preset = (request.POST.get('license_preset') or '').strip()
+        custom_title = (request.POST.get('custom_title') or '').strip()
+        manual_title = (request.POST.get('title') or '').strip()
+
+        if preset == "additional":
+            resolved_title = custom_title or manual_title or "Additional Licence"
+        elif preset and preset in LICENSE_PRESET_LABELS:
+            resolved_title = LICENSE_PRESET_LABELS[preset]
+        else:
+            resolved_title = manual_title
+
+        credential.title = resolved_title
+
         issue_date = request.POST.get('issue_date')
         credential.issue_date = issue_date if issue_date else None
+
         expiry_date = request.POST.get('expiry_date')
         credential.expiry_date = expiry_date if expiry_date else None
+
         credential.required = request.POST.get('required') == 'on'
+
+        uploaded_image = request.FILES.get('credential_image')
+        if uploaded_image:
+            credential.image = uploaded_image
+
         credential.save()
-        
+
         messages.success(request, 'Credential saved successfully')
-        return redirect('user_profile', pk=pk)
-    
-    return redirect('user_profile', pk=pk)
+        return redirect('user_profile', user_id=pk)
+
+    return redirect('user_profile', user_id=pk)
 
 @login_required
 def delete_user(request, pk):
@@ -216,12 +247,12 @@ def delete_user(request, pk):
     # Prevent users from deleting themselves
     if user_obj.pk == request.user.pk:
         messages.error(request, 'You cannot delete your own account.')
-        return redirect('user_profile', pk=pk)
+        return redirect('user_profile', user_id=pk)
     
     # Prevent managers from deleting admins
     if request.user.role == 'manager' and user_obj.role == 'admin':
         messages.error(request, 'Managers cannot delete admin users.')
-        return redirect('user_profile', pk=pk)
+        return redirect('user_profile', user_id=pk)
     
     if request.method == 'POST':
         user_name = f"{user_obj.first_name} {user_obj.last_name}"
@@ -229,54 +260,13 @@ def delete_user(request, pk):
         messages.success(request, f'User {user_name} has been deleted.')
         return redirect('personnel')
     
-    return redirect('user_profile', pk=pk)
+    return redirect('user_profile', user_id=pk)
 
-@login_required
-def create_form(request):
-    if request.user.role not in ['admin', 'manager']:
-        messages.error(request, 'You do not have permission to create forms.')
-        return redirect('dashboard')
-    
-    if request.method == 'POST':
-        title = request.POST.get('title', 'Untitled Form')
-        description = request.POST.get('description', '')
-        
-        # Create the form
-        form = Form.objects.create(
-            title=title,
-            description=description,
-            created_by=request.user
-        )
-        
-        # Get number of questions
-        num_questions = int(request.POST.get('num_questions', 0))
-        
-        # Create questions
-        for i in range(1, num_questions + 1):
-            question_text = request.POST.get(f'question_{i}')
-            question_type = request.POST.get(f'question_type_{i}', 'text')
-            options = request.POST.get(f'options_{i}', '')
-            is_required = request.POST.get(f'required_{i}') == 'on'
-            
-            if question_text:
-                Question.objects.create(
-                    form=form,
-                    question_text=question_text,
-                    question_type=question_type,
-                    options_text=options if question_type in ['radio', 'checkbox', 'dropdown'] else '',
-                    is_required=is_required,
-                    order=i
-                )
-        
-        messages.success(request, f'Form "{title}" created successfully!')
-        return redirect('view_form', pk=form.pk)
-    
-    return render(request, 'create_form.html')
 
 @login_required
 def add_question_field(request):
     """Returns HTML for a new question field via HTMX"""
-    question_id = str(uuid.uuid4())[:8]  # Unique ID for this question
+    question_id = str(uuid.uuid4())[:8]
     
     html = f'''
     <div class="card bg-base-100 p-4 question-card">
@@ -316,6 +306,8 @@ def add_question_field(request):
             <option value="radio">Multiple Choice (Single)</option>
             <option value="checkbox">Multiple Choice (Multiple)</option>
             <option value="dropdown">Dropdown</option>
+            <option value="file">File Upload</option>
+            <option value="license_upload">Licence Image Upload</option>
           </select>
         </div>
         
@@ -338,60 +330,94 @@ def add_question_field(request):
                     placeholder="Option 1\nOption 2\nOption 3"></textarea>
         </div>
       </div>
+
+      <div id="license-config-{question_id}" style="display: none;">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text">Licence Type</span>
+            </label>
+            <select name="questions[{question_id}][license_preset]"
+                    class="select select-bordered select-sm"
+                    onchange="toggleLicenseCustom(this, '{question_id}')">
+              <option value="driver_licence">Driver Licence</option>
+              <option value="bus_licence">Bus Licence</option>
+              <option value="passport">Passport</option>
+              <option value="blue_card">Blue Card</option>
+              <option value="forklift_licence">Forklift Licence</option>
+              <option value="additional">Additional Licence</option>
+            </select>
+          </div>
+
+          <div class="form-control" id="license-custom-{question_id}" style="display:none;">
+            <label class="label">
+              <span class="label-text">Custom Licence Label</span>
+            </label>
+            <input name="questions[{question_id}][custom_license_label]"
+                   type="text"
+                   class="input input-bordered input-sm"
+                   placeholder="e.g. White Card" />
+          </div>
+        </div>
+      </div>
     </div>
     '''
     return HttpResponse(html)
 
 @login_required
 def create_form(request):
-    if request.user.role not in ['admin', 'manager']:
-        return HttpResponse(status=403)
-    
     if request.method == 'POST':
-        title = request.POST.get('title', 'Untitled Form')
+        title = request.POST.get('title')
         description = request.POST.get('description', '')
-        
-        # Create the form
+        questions_data = {}
+
+        for key, value in request.POST.items():
+            if key.startswith('questions['):
+                parts = key.replace('questions[', '').replace(']', '').split('[')
+                if len(parts) >= 2:
+                    question_id = parts[0]
+                    field_name = parts[1]
+
+                    if question_id not in questions_data:
+                        questions_data[question_id] = {}
+
+                    questions_data[question_id][field_name] = value
+
         form = Form.objects.create(
             title=title,
             description=description,
             created_by=request.user
         )
-        
-        # Process questions - they come as questions[uuid][field]
-        questions_data = {}
-        for key, value in request.POST.items():
-            if key.startswith('questions['):
-                # Parse: questions[uuid][field] -> uuid, field
-                parts = key.split('[')
-                if len(parts) >= 3:
-                    uuid = parts[1].rstrip(']')
-                    field = parts[2].rstrip(']')
-                    
-                    if uuid not in questions_data:
-                        questions_data[uuid] = {}
-                    questions_data[uuid][field] = value
-        
-        # Create Question objects
+
         order = 1
         for uuid, data in questions_data.items():
             if 'text' in data and data['text']:
+                question_type = data.get('type', 'text')
+                options_text = data.get('options', '')
+
+                if question_type == 'license_upload':
+                    preset = data.get('license_preset', '')
+                    custom_label = (data.get('custom_license_label', '') or '').strip()
+
+                    if preset == 'additional':
+                        options_text = custom_label or 'Additional Licence'
+                    else:
+                        options_text = LICENSE_PRESET_LABELS.get(preset, 'Licence')
+
                 Question.objects.create(
                     form=form,
                     question_text=data.get('text', ''),
-                    question_type=data.get('type', 'text'),
-                    options_text=data.get('options', ''),
+                    question_type=question_type,
+                    options_text=options_text,
                     is_required=data.get('required') == 'on',
                     order=order
                 )
                 order += 1
-        
-        # Return HTMX redirect response
-        response = HttpResponse()
-        response['HX-Redirect'] = f'/dashboard/forms/mine/'
-        return response
-    
-    return HttpResponse(status=405)
+
+        messages.success(request, f'Form "{title}" created successfully!')
+        return redirect('my_forms')
+
+    return render(request, 'create_form.html')
 
 @login_required
 def delete_form(request, pk):
@@ -422,7 +448,7 @@ def edit_form_data(request, pk):
         'id': form_obj.pk,
         'title': form_obj.title,
         'description': form_obj.description,
-        'questions': [
+                'questions': [
             {
                 'text': q.question_text,
                 'type': q.question_type,
@@ -464,19 +490,30 @@ def update_form(request, pk):
                         questions_data[uuid] = {}
                     questions_data[uuid][field] = value
         
-        # Create Question objects
-        order = 1
-        for uuid, data in questions_data.items():
-            if 'text' in data and data['text']:
-                Question.objects.create(
-                    form=form_obj,
-                    question_text=data.get('text', ''),
-                    question_type=data.get('type', 'text'),
-                    options_text=data.get('options', ''),
-                    is_required=data.get('required') == 'on',
-                    order=order
-                )
-                order += 1
+    order = 1
+    for uuid, data in questions_data.items():
+        if 'text' in data and data['text']:
+            question_type = data.get('type', 'text')
+            options_text = data.get('options', '')
+
+            if question_type == 'license_upload':
+                preset = data.get('license_preset', '')
+                custom_label = (data.get('custom_license_label', '') or '').strip()
+
+                if preset == 'additional':
+                    options_text = custom_label or 'Additional Licence'
+                else:
+                    options_text = LICENSE_PRESET_LABELS.get(preset, 'Licence')
+
+            Question.objects.create(
+                form=form_obj,
+                question_text=data.get('text', ''),
+                question_type=question_type,
+                options_text=options_text,
+                is_required=data.get('required') == 'on',
+                order=order
+            )
+            order += 1
         
         messages.success(request, f'Form "{form_obj.title}" updated successfully!')
         
@@ -701,7 +738,6 @@ def my_projects(request):
 
 @login_required
 def project_invite_form(request, invite_id):
-    """User fills out the required form attached to the invite role."""
     invite = get_object_or_404(
         ProjectInvite.objects.select_related("project", "project_role", "project_role__required_form", "user"),
         pk=invite_id,
@@ -713,7 +749,6 @@ def project_invite_form(request, invite_id):
         messages.error(request, "No required form has been configured for this role yet.")
         return redirect("my_projects")
 
-    # Mark as viewed
     if invite.status == "pending":
         invite.status = "viewed"
         invite.viewed_at = timezone.now()
@@ -730,31 +765,47 @@ def project_invite_form(request, invite_id):
 
             for q in questions:
                 key = f"question_{q.id}"
+                uploaded_file = request.FILES.get(key)
 
                 if q.question_type == "checkbox":
                     values = request.POST.getlist(key)
                     answer_value = ", ".join(values)
+                elif q.question_type in ["file", "license_upload"]:
+                    answer_value = q.options_text if q.question_type == "license_upload" else ""
                 else:
                     answer_value = request.POST.get(key, "")
 
-                # Very basic required validation
-                if q.is_required and not answer_value:
-                    messages.error(request, f'Question "{q.question_text}" is required.')
-                    submission.delete()
-                    return redirect("project_invite_form", invite_id=invite.id)
+                if q.is_required:
+                    if q.question_type in ["file", "license_upload"] and not uploaded_file:
+                        messages.error(request, f'Question "{q.question_text}" is required.')
+                        submission.delete()
+                        return redirect("project_invite_form", invite_id=invite.id)
+                    if q.question_type not in ["file", "license_upload"] and not answer_value:
+                        messages.error(request, f'Question "{q.question_text}" is required.')
+                        submission.delete()
+                        return redirect("project_invite_form", invite_id=invite.id)
 
                 Answer.objects.create(
                     submission=submission,
                     question=q,
                     answer_text=answer_value or "",
+                    answer_file=uploaded_file if uploaded_file else None,
                 )
 
-            # Mark invite completed
+            # Automatically attach all additional profile licences to every submission
+            additional_credentials = request.user.credentials.filter(required=False, image__isnull=False)
+            for cred in additional_credentials:
+                SubmissionCredentialAttachment.objects.create(
+                    submission=submission,
+                    source_credential=cred,
+                    title=cred.title,
+                    image=cred.image,
+                )
+
             invite.status = "completed"
             invite.completed_at = timezone.now()
             invite.save(update_fields=["status", "completed_at"])
 
-            # Mark form assignment completed if it exists
             FormAssignment.objects.filter(form=required_form, user=request.user).update(
                 completed=True,
                 completed_at=timezone.now(),

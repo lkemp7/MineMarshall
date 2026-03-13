@@ -28,7 +28,6 @@
             <span class="badge badge-neutral badge-sm">{{ question.get_question_type_display }}</span>
           </div>
           
-          <!-- Show what type of input this is -->
           {% if question.question_type == 'text' %}
             <input type="text" class="input input-bordered input-sm w-full" placeholder="Short text answer" disabled />
           
@@ -77,6 +76,15 @@
                 <option>{{ option }}</option>
               {% endfor %}
             </select>
+
+          {% elif question.question_type == 'file' %}
+            <input type="file" class="file-input file-input-bordered file-input-sm w-full" disabled />
+
+          {% elif question.question_type == 'license_upload' %}
+            <div class="space-y-2">
+              <div class="text-sm opacity-70">Licence required: {{ question.options_text }}</div>
+              <input type="file" class="file-input file-input-bordered file-input-sm w-full" disabled />
+            </div>
           
           {% endif %}
         </div>
@@ -91,7 +99,6 @@
     </div>
   {% endif %}
 
-<!-- Action buttons for admins/managers -->
 {% if request.user.role == 'admin' or request.user.role == 'manager' %}
   <div class="flex gap-4 mt-6">
     <button class="btn btn-sm bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f]"

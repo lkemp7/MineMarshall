@@ -21,5 +21,5 @@ def edit_profile(request):
     return render(request, 'accounts/userAccount.html', {'form': form})
 
 @login_required
-def redirect_user():
-        return redirect('dashboard')
+def redirect_user(request):
+    return redirect('dashboard')
