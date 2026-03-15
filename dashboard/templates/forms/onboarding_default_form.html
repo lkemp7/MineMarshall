@@ -1,0 +1,212 @@
+{% extends 'onboarding_base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto py-8">
+  <div class="bg-base-100 rounded-2xl shadow-xl p-6">
+    <style>
+      #personalDetails th,
+      #personalDetails td { padding-top: 0.3rem; padding-bottom: 0.3rem; }
+
+      #personalDetails input.input {
+        height: 2.1rem;
+        min-height: 2.1rem;
+        padding-top: 0.25rem;
+        padding-bottom: 0.25rem;
+      }
+    </style>
+
+    <div class="flex items-start justify-between mb-4">
+      <img src="{% static 'Orefox_logo.png' %}" alt="Orefox Logo"
+           class="h-36 w-auto shrink-0 mr-8">
+
+      <table class="table table-compact text-xs w-auto shrink-0 text-right">
+        <tbody>
+          <tr>
+            <th class="font-semibold whitespace-nowrap py-1 px-3">Document Owner</th>
+            <td class="whitespace-nowrap py-1 px-3 text-left">OreFox</td>
+          </tr>
+          <tr>
+            <th class="font-semibold whitespace-nowrap py-1 px-3">Document Approver</th>
+            <td class="whitespace-nowrap py-1 px-3 text-left">MineMarshal</td>
+          </tr>
+          <tr>
+            <th class="font-semibold whitespace-nowrap py-1 px-3">Version</th>
+            <td class="whitespace-nowrap py-1 px-3 text-left">1</td>
+          </tr>
+          <tr>
+            <th class="font-semibold whitespace-nowrap py-1 px-3">Issue Date</th>
+            <td class="whitespace-nowrap py-1 px-3 text-left">2025-06-01</td>
+          </tr>
+          <tr>
+            <th class="font-semibold whitespace-nowrap py-1 px-3">Revision Date</th>
+            <td class="whitespace-nowrap py-1 px-3 text-left">2025-10-01</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <form id="authform" method="post">
+      {% csrf_token %}
+
+      <div class="overflow-x-auto mb-6">
+        <table id="personalDetails" class="table w-full">
+          <thead>
+            <tr>
+              <th class="bg-base-300 py-1">Field</th>
+              <th class="py-1">Answer</th>
+              <th class="bg-base-300 py-1">Field</th>
+              <th class="py-1">Answer</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="bg-base-300 font-semibold py-1">First Name</td>
+              <td>
+                <input
+                  type="text"
+                  class="input input-bordered input-sm w-64"
+                  name="first_name"
+                  value="{{ user_obj.first_name }}"
+                  readonly
+                >
+              </td>
+
+              <td class="bg-base-300 font-semibold py-1">Role</td>
+              <td>
+                <input
+                  type="text"
+                  class="input input-bordered input-sm w-64"
+                  placeholder="e.g. Underground Electrician"
+                  name="role"
+                >
+              </td>
+            </tr>
+
+            <tr>
+              <td class="bg-base-300 font-semibold py-1">Last Name</td>
+              <td>
+                <input
+                  type="text"
+                  class="input input-bordered input-sm w-64"
+                  name="last_name"
+                  value="{{ user_obj.last_name }}"
+                  readonly
+                >
+              </td>
+
+              <td class="bg-base-300 font-semibold py-1">Employer</td>
+              <td>
+                <input
+                  type="text"
+                  class="input input-bordered input-sm w-64"
+                  placeholder="e.g. ACME Mining Pty Ltd"
+                  name="employer"
+                >
+              </td>
+            </tr>
+
+            <tr>
+              <td class="bg-base-300 font-semibold py-1">DOB</td>
+              <td>
+                <input type="date" class="input input-bordered input-sm w-64" name="dob">
+              </td>
+
+              <td class="bg-base-300 font-semibold py-1">Emergency Contact Name</td>
+              <td>
+                <input
+                  type="text"
+                  class="input input-bordered input-sm w-64"
+                  placeholder="e.g. Jamie Doe"
+                  name="emergency_contact_name"
+                >
+              </td>
+            </tr>
+
+            <tr>
+              <td class="bg-base-300 font-semibold py-1">Email</td>
+              <td>
+                <input
+                  type="email"
+                  class="input input-bordered input-sm w-64"
+                  name="email"
+                  value="{{ user_obj.email }}"
+                  readonly
+                >
+              </td>
+
+              <td class="bg-base-300 font-semibold py-1">Emergency Contact Mobile</td>
+              <td>
+                <input
+                  type="tel"
+                  class="input input-bordered input-sm w-64"
+                  placeholder="+61 4xx xxx xxx"
+                  name="emergency_contact_mobile"
+                >
+              </td>
+            </tr>
+
+            <tr>
+              <td class="bg-base-300 font-semibold py-1">Mobile</td>
+              <td>
+                <input
+                  type="tel"
+                  class="input input-bordered input-sm w-64"
+                  placeholder="+61 4xx xxx xxx"
+                  name="mobile"
+                >
+              </td>
+
+              <td class="bg-base-300 font-semibold py-1"></td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </form>
+
+    <div class="mt-6">
+      <button id="submitBtn" type="submit" form="authform" class="btn btn-primary" disabled>
+        Submit
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function isDetailsComplete() {
+    const requiredNames = [
+      "first_name",
+      "last_name",
+      "dob",
+      "email",
+      "mobile",
+      "role",
+      "employer",
+      "emergency_contact_name",
+      "emergency_contact_mobile"
+    ];
+
+    for (const name of requiredNames) {
+      const el = document.querySelector(`[name="${name}"]`);
+      if (!el || !el.value || !el.value.trim()) return false;
+    }
+    return true;
+  }
+
+  function updateSubmitState() {
+    const btn = document.getElementById("submitBtn");
+    if (!btn) return;
+    btn.disabled = !isDetailsComplete();
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    updateSubmitState();
+
+    document.querySelectorAll("#personalDetails input").forEach(el => {
+      el.addEventListener("input", updateSubmitState);
+      el.addEventListener("change", updateSubmitState);
+    });
+  });
+</script>
+{% endblock %}

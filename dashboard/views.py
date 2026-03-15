@@ -14,6 +14,12 @@ import uuid
 from django.db import transaction
 from django.db.models import Prefetch
 from .models import FormAssignment, FormSubmission, Answer, Project, ProjectRole, ProjectInvite
+import secrets
+from django.contrib import messages
+from accounts.models import CustomUser
+from .models import OnboardingInvite
+from django.core.mail import send_mail
+from django.conf import settings
 
 @login_required
 def dashboard(request):
@@ -772,3 +778,105 @@ def project_invite_form(request, invite_id):
             "questions": questions,
         },
     )
+
+@login_required
+def start_induction(request):
+    if request.user.role not in ["admin", "manager"]:
+        messages.error(request, "You do not have permission to start an induction.")
+        return redirect("dashboard")
+    if request.method == "POST":
+        first_name = request.POST.get("first_name", "").strip()
+        last_name = request.POST.get("last_name", "").strip()
+        email = request.POST.get("email", "").strip().lower()
+        requires_default_form = request.POST.get("requires_default_form") == "on"
+
+        if not first_name or not last_name or not email:
+            messages.error(request, "First name, last name, and email are required.")
+            return redirect("personnel")
+
+        if CustomUser.objects.filter(email=email).exists():
+            messages.error(request, "A user with that email already exists.")
+            return redirect("personnel")
+
+        user = CustomUser.objects.create(
+            email=email,
+            username=email,
+            first_name=first_name,
+            last_name=last_name,
+            is_active=False,
+        )
+        user.set_unusable_password()
+        user.save()
+
+        invite = OnboardingInvite.objects.create(
+            user=user,
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            token=secrets.token_urlsafe(32),
+            requires_default_form=requires_default_form,
+            status="sent",
+        )
+
+        setup_url = request.build_absolute_uri(
+            f"/accounts/setup-account/{invite.token}/"
+        )
+        #error debugging
+        print("EMAIL_BACKEND =", settings.EMAIL_BACKEND)
+        
+        send_mail(
+            subject="Complete your MineMarshall account setup",
+            message=(
+                f"Hello {first_name},\n\n"
+                f"You have been invited to set up your MineMarshall account.\n\n"
+                f"Use the link below to create your password and continue onboarding:\n\n"
+                f"{setup_url}\n\n"
+                f"If your induction requires it, you will be taken to the Default Form after setup."
+            ),
+            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@minemarshall.local"),
+            recipient_list=[email],
+            fail_silently=False,
+        )
+
+        messages.success(
+            request,
+            f"Induction started for {email}. Setup link: {setup_url}"
+        )
+        return redirect("personnel")
+
+    return redirect("personnel")
+
+@login_required
+def onboarding_default_form(request, token):
+    invite = get_object_or_404(OnboardingInvite, token=token)
+    user = invite.user
+
+    if request.user != user:
+        messages.error(request, "You must complete onboarding from your invited account.")
+        return redirect("login")
+
+    if invite.status == "completed":
+        return redirect("dashboard")
+
+    if request.method == "POST":
+        post_data = request.POST.copy()
+
+        # Lock identity fields to the inducted user
+        post_data["email"] = user.email
+        post_data["first_name"] = user.first_name
+        post_data["last_name"] = user.last_name
+
+        create_or_update_user_from_post(post_data)
+
+        invite.status = "completed"
+        invite.completed_at = timezone.now()
+        invite.save()
+
+        messages.success(request, "Default form completed successfully.")
+        return redirect("dashboard")
+
+    context = {
+        "invite": invite,
+        "user_obj": user,
+    }
+    return render(request, "forms/onboarding_default_form.html", context)

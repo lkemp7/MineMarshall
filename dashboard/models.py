@@ -198,4 +198,34 @@ class ProjectInvite(models.Model):
 
     def __str__(self):
         return f"{self.user.email} invited to {self.project.title} as {self.project_role.title}"
+    
+
+class OnboardingInvite(models.Model):
+    
+    STATUS_CHOICES = [
+        ("sent", "Sent"),
+        ("account_created", "Account Created"),
+        ("default_form_pending", "Default Form Pending"),
+        ("completed", "Completed"),
+        ("expired", "Expired"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="onboarding_invites",
+        null=True,
+        blank=True,
+    )
+    email = models.EmailField()
+    first_name = models.CharField(max_length=150)
+    last_name = models.CharField(max_length=150)
+    token = models.CharField(max_length=255, unique=True)
+    requires_default_form = models.BooleanField(default=True)
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default="sent")
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.email} - {self.status}"
 
