@@ -3,6 +3,7 @@ from accounts.models import CustomUser
 from .models import Form, Question
 from django.contrib import admin
 from .models import Project, ProjectRole, ProjectInvite
+from .models import WorkerProfile, Credential, FormSubmission, Answer, OnboardingInvite
 
 admin.site.register(Project)
 admin.site.register(ProjectRole)
@@ -18,3 +19,5 @@ class QuestionInline(admin.TabularInline):
 class FormAdmin(admin.ModelAdmin):
     list_display = ("title", "created_by", "created_at")
     inlines = [QuestionInline]
+
+admin.site.register(OnboardingInvite)
