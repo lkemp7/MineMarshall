@@ -26,7 +26,7 @@
 
   <div class="card bg-base-200 shadow-sm">
     <div class="card-body">
-      <form method="post" class="space-y-5">
+      <form method="post" enctype="multipart/form-data" class="space-y-5">
         {% csrf_token %}
 
         {% for q in questions %}
@@ -93,8 +93,13 @@
               {% endif %}
 
             {% elif q.question_type == 'file' %}
-              <!-- File upload not yet wired to storage -->
-              <input type="text" name="question_{{ q.id }}" class="input input-bordered w-full" placeholder="File upload not implemented yet - enter note/reference" {% if q.is_required %}required{% endif %} />
+              <input type="file" name="question_{{ q.id }}" accept="image/*" class="file-input file-input-bordered w-full" {% if q.is_required %}required{% endif %} />
+
+            {% elif q.question_type == 'license_upload' %}
+              <label class="label">
+                <span class="label-text-alt opacity-70">Upload: {{ q.options_text }}</span>
+              </label>
+              <input type="file" name="question_{{ q.id }}" accept="image/*" class="file-input file-input-bordered w-full" {% if q.is_required %}required{% endif %} />
 
             {% else %}
               <input type="text" name="question_{{ q.id }}" class="input input-bordered w-full" {% if q.is_required %}required{% endif %} />
