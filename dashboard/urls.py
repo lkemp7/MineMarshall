@@ -29,4 +29,6 @@ urlpatterns = [
     path('projects/<int:project_pk>/roles/<int:role_pk>/update-form/', views.update_project_role_form, name='update_project_role_form'),
     path('projects/<int:project_pk>/roles/<int:role_pk>/invite/', views.invite_users_to_project_role, name='invite_users_to_project_role'),
     path('project-invites/<int:invite_id>/form/', views.project_invite_form, name='project_invite_form'),
-]
+    path("personnel/induction/", views.start_induction, name="start_induction"),
+    path("forms/onboarding-default/<str:token>/", views.onboarding_default_form, name="onboarding_default_form"),
+  ]

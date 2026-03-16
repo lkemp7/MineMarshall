@@ -19,6 +19,11 @@
       </svg>
       Add User
     </button>
+    <button class="btn btn-outline border-[#F79327] text-[#F79327] hover:bg-[#F79327] hover:text-white"
+    onclick="document.getElementById('inductionModal').showModal()"
+    >
+    Induction
+    </button>
     {% endif %}
   </div>
 
@@ -150,6 +155,52 @@
       <div class="modal-action">
         <button type="button" class="btn" onclick="document.getElementById('addUserModal').close()">Cancel</button>
         <button type="submit" class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]">Create User</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
+{% endif %}
+
+{% if request.user.role == 'admin' or request.user.role == 'manager' %}
+<dialog id="inductionModal" class="modal">
+  <div class="modal-box max-w-2xl">
+    <h3 class="font-bold text-lg mb-4">Start Induction</h3>
+
+    <form method="post" action="{% url 'start_induction' %}">
+      {% csrf_token %}
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="form-control">
+          <label class="label"><span class="label-text">First Name *</span></label>
+          <input type="text" name="first_name" class="input input-bordered" required />
+        </div>
+
+        <div class="form-control">
+          <label class="label"><span class="label-text">Last Name *</span></label>
+          <input type="text" name="last_name" class="input input-bordered" required />
+        </div>
+
+        <div class="form-control md:col-span-2">
+          <label class="label"><span class="label-text">Email *</span></label>
+          <input type="email" name="email" class="input input-bordered" required />
+        </div>
+      </div>
+
+      <div class="form-control mt-4">
+        <label class="label cursor-pointer justify-start gap-3">
+          <input type="checkbox" name="requires_default_form" class="checkbox" checked />
+          <span class="label-text">Require Default Form after account setup</span>
+        </label>
+      </div>
+
+      <div class="modal-action">
+        <button type="button" class="btn" onclick="document.getElementById('inductionModal').close()">Cancel</button>
+        <button type="submit" class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]">
+          Start Induction
+        </button>
       </div>
     </form>
   </div>
