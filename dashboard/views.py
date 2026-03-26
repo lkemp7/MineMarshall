@@ -21,6 +21,7 @@ from accounts.models import CustomUser
 from .models import OnboardingInvite
 from django.core.mail import send_mail
 from django.conf import settings
+from django.urls import reverse
 
 @login_required
 def dashboard(request):
@@ -869,9 +870,8 @@ def start_induction(request):
             status="sent",
         )
 
-        setup_url = request.build_absolute_uri(
-            f"/accounts/setup-account/{invite.token}/"
-        )
+        setup_path = reverse("setup_account", kwargs={"token": invite.token})
+        setup_url = request.build_absolute_uri(setup_path)
         #error debugging
         print("EMAIL_BACKEND =", settings.EMAIL_BACKEND)
         
