@@ -29,3 +29,10 @@ Followed by:
 python manage.py migrate
 python manage.py runserver
 ```
+
+Gmail Login
+```
+minemarshal8@gmail.com
+password - Br3#cCpm7
+app password - hcxmtmasoenksemz
+```
