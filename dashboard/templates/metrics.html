@@ -1,10 +1,255 @@
 {% extends "base.html" %}
-{% load static %}
 
 {% block content %}
-  <h1 class="text-4xl text-[#F79327] mb-4">Metrics</h1>
+<div class="max-w-7xl mx-auto space-y-6">
+  <div class="flex items-center justify-between">
+    <h1 class="text-4xl text-[#F79327]">Metrics</h1>
+  </div>
 
-  <div class="bg-base-200 rounded-box p-4 max-w-none mx-auto">
-  <img src="{% static 'grafana-placeholder.png' %}" class="w-full h-auto rounded-md shadow" alt="Grafana layout placeholder" />
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert {% if message.tags == 'error' %}alert-error{% else %}alert-success{% endif %}">
+        <span>{{ message }}</span>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="card bg-base-200 shadow-sm">
+    <div class="card-body">
+      <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+        <div class="form-control">
+          <label class="label"><span class="label-text">Project</span></label>
+          <select name="project" class="select select-bordered" onchange="this.form.submit()">
+            <option value="">-- Select a project --</option>
+            {% for project in projects %}
+              <option value="{{ project.id }}" {% if selected_project_id == project.id|stringformat:"s" %}selected{% endif %}>
+                {{ project.title }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-control">
+          <label class="label"><span class="label-text">Role</span></label>
+          <select name="role" class="select select-bordered" onchange="this.form.submit()">
+            <option value="">All Roles</option>
+            {% for role in role_titles %}
+              <option value="{{ role }}" {% if selected_role == role %}selected{% endif %}>{{ role }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-control">
+          <label class="label"><span class="label-text">Sort By</span></label>
+          <select name="sort" class="select select-bordered" onchange="this.form.submit()">
+            <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Name</option>
+            <option value="role" {% if sort_by == 'role' %}selected{% endif %}>Role</option>
+            <option value="status" {% if sort_by == 'status' %}selected{% endif %}>Status</option>
+          </select>
+        </div>
+
+        <div class="form-control">
+          <button type="submit" class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]">
+            Refresh
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if selected_project %}
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div class="card bg-base-200 shadow-sm">
+        <div class="card-body">
+          <div class="text-sm opacity-70">Total Employees</div>
+          <div class="text-3xl font-bold">{{ totals.total_members }}</div>
+        </div>
+      </div>
+
+      <div class="card bg-base-200 shadow-sm">
+        <div class="card-body">
+          <div class="text-sm opacity-70">Not Submitted</div>
+          <div class="text-3xl font-bold">{{ totals.not_submitted }}</div>
+        </div>
+      </div>
+
+      <div class="card bg-base-200 shadow-sm">
+        <div class="card-body">
+          <div class="text-sm opacity-70">Submitted</div>
+          <div class="text-3xl font-bold">{{ totals.submitted }}</div>
+        </div>
+      </div>
+
+      <div class="card bg-base-200 shadow-sm">
+        <div class="card-body">
+          <div class="text-sm opacity-70">Approved</div>
+          <div class="text-3xl font-bold">{{ totals.approved }}</div>
+        </div>
+      </div>
+
+      <div class="card bg-base-200 shadow-sm">
+        <div class="card-body">
+          <div class="text-sm opacity-70">Compliance Issues</div>
+          <div class="text-3xl font-bold">{{ totals.compliance_issues }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="card bg-base-200 shadow-sm lg:col-span-2">
+        <div class="card-body">
+          <h2 class="card-title">Project Timeline</h2>
+
+          {% if project_timeline.end_date %}
+            <div class="space-y-2">
+              <div><span class="opacity-70">Start:</span> {{ project_timeline.start_date|date:"Y-m-d" }}</div>
+              <div><span class="opacity-70">End:</span> {{ project_timeline.end_date|date:"Y-m-d" }}</div>
+              <div><span class="opacity-70">Elapsed Days:</span> {{ project_timeline.elapsed_days }}</div>
+              <div><span class="opacity-70">Days Remaining:</span> {{ project_timeline.remaining_days }}</div>
+              <progress class="progress progress-primary w-full" value="{{ project_timeline.progress_percent }}" max="100"></progress>
+              <div class="text-sm opacity-70">{{ project_timeline.progress_percent }}% through project timeline</div>
+            </div>
+          {% else %}
+            <div class="space-y-2">
+              <div><span class="opacity-70">Start:</span> {{ project_timeline.start_date|date:"Y-m-d" }}</div>
+              <div><span class="opacity-70">Project Length:</span> Indefinite</div>
+              <div><span class="opacity-70">Days Since Start:</span> {{ project_timeline.elapsed_days }}</div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card bg-base-200 shadow-sm">
+        <div class="card-body">
+          <h2 class="card-title">Employees Per Role</h2>
+          {% if role_counts %}
+            <div class="space-y-3">
+              {% for item in role_counts %}
+                <div class="flex items-center justify-between">
+                  <span>{{ item.role }}</span>
+                  <span class="badge badge-neutral">{{ item.count }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="opacity-70">No roles found.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card bg-base-200 shadow-sm">
+      <div class="card-body">
+        <h2 class="card-title">Project Members</h2>
+
+        {% if member_rows %}
+          <div class="overflow-x-auto">
+            <table class="table table-zebra">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Role</th>
+                  <th>Required Form</th>
+                  <th>Invite Date</th>
+                  <th>Submitted</th>
+                  <th>Review</th>
+                  <th>Compliance</th>
+                  <th>Overall Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in member_rows %}
+                  <tr>
+                    <td>
+                      <div class="font-semibold">{{ row.user.first_name }} {{ row.user.last_name }}</div>
+                      <div class="text-xs opacity-70">{{ row.user.email }}</div>
+                    </td>
+                    <td>{{ row.role }}</td>
+                    <td>
+                      {% if row.required_form %}
+                        {{ row.required_form.title }}
+                      {% else %}
+                        <span class="opacity-60">None</span>
+                      {% endif %}
+                    </td>
+                    <td>{{ row.invite.invited_at|date:"Y-m-d" }}</td>
+                    <td>
+                      {% if row.submission %}
+                        {{ row.submission.submitted_at|date:"Y-m-d H:i" }}
+                      {% else %}
+                        <span class="opacity-60">Not submitted</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if row.invite.review_status == 'approved' %}
+                        <span class="badge badge-success">Approved</span>
+                      {% elif row.invite.review_status == 'rejected' %}
+                        <span class="badge badge-error">Rejected</span>
+                      {% else %}
+                        <span class="badge badge-warning">Pending Review</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if row.has_compliance_issue %}
+                        <div class="badge badge-error">Issue</div>
+                        <div class="text-xs opacity-70 mt-1">
+                          {% for cred in row.expired_credentials %}
+                            {{ cred.title }}{% if not forloop.last %}, {% endif %}
+                          {% endfor %}
+                        </div>
+                      {% else %}
+                        <span class="badge badge-success">OK</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if row.derived_status == 'Approved' %}
+                        <span class="badge badge-success">{{ row.derived_status }}</span>
+                      {% elif row.derived_status == 'Approved - Compliance Issue' %}
+                        <span class="badge badge-error">{{ row.derived_status }}</span>
+                      {% elif row.derived_status == 'Submitted' %}
+                        <span class="badge badge-info">{{ row.derived_status }}</span>
+                      {% elif row.derived_status == 'Rejected' %}
+                        <span class="badge badge-error">{{ row.derived_status }}</span>
+                      {% else %}
+                        <span class="badge badge-warning">{{ row.derived_status }}</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if row.invite.status == 'completed' %}
+                        <div class="flex flex-col gap-2">
+                          <form method="post" action="{% url 'update_project_invite_review_status' row.invite.id %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="review_status" value="approved">
+                            <button type="submit" class="btn btn-xs btn-success text-white w-full">Approve</button>
+                          </form>
+                          <form method="post" action="{% url 'update_project_invite_review_status' row.invite.id %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="review_status" value="rejected">
+                            <button type="submit" class="btn btn-xs btn-error text-white w-full">Reject</button>
+                          </form>
+                        </div>
+                      {% else %}
+                        <span class="opacity-60 text-xs">No submission yet</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="alert alert-info">
+            <span>No members found for this project/filter.</span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+  {% else %}
+    <div class="alert alert-info">
+      <span>Select a project above to view metrics.</span>
+    </div>
+  {% endif %}
 </div>
 {% endblock %}
