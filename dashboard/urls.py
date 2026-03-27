@@ -11,6 +11,7 @@ urlpatterns = [
     path('personnel/add/', views.add_user, name='add_user'),
     path('personnel/<int:user_id>/', views.user_profile, name='user_profile'),
     path('metrics/', views.metrics, name='metrics'),
+    path('metrics/invite/<int:invite_id>/review/', views.update_project_invite_review_status, name='update_project_invite_review_status'),
     path('forms/submit/', views.submit_authorization_form, name='submit_authorization_form'),
     path('personnel/<int:pk>/edit/', views.edit_user_profile, name='edit_user_profile'),
     path('personnel/<int:pk>/delete/', views.delete_user, name='delete_user'),

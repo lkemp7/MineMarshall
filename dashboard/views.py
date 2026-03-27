@@ -14,7 +14,9 @@ from django.db import transaction
 from django.db.models import Prefetch
 from .models import FormAssignment, FormSubmission, Answer, Project, ProjectRole, ProjectInvite
 from .models import Form, Question, WorkerProfile, Credential, SubmissionCredentialAttachment,LICENSE_PRESETS,LICENSE_PRESET_LABELS
-
+from django.db.models import Count
+from django.utils import timezone
+from datetime import date
 import secrets
 from django.contrib import messages
 from accounts.models import CustomUser
@@ -91,9 +93,209 @@ def user_profile(request, user_id):
         },
     )
 
+def _is_admin_or_manager(user):
+    return getattr(user, "role", None) in ["admin", "manager"]
+
+
+def _user_has_compliance_issue(user):
+    today = timezone.localdate()
+    expired_creds = user.credentials.filter(
+        expiry_date__isnull=False,
+        expiry_date__lt=today
+    )
+    return expired_creds.exists(), list(expired_creds)
+
+
+def _project_member_status(invite):
+    has_issue, expired_creds = _user_has_compliance_issue(invite.user)
+
+    if invite.status != "completed":
+        return "Not Submitted", has_issue, expired_creds
+
+    if invite.review_status == "approved":
+        if has_issue:
+            return "Approved - Compliance Issue", has_issue, expired_creds
+        return "Approved", has_issue, expired_creds
+
+    if invite.review_status == "rejected":
+        return "Rejected", has_issue, expired_creds
+
+    return "Submitted", has_issue, expired_creds
+
 @login_required
 def metrics(request):
-    return render(request, "metrics.html")
+    if not _is_admin_or_manager(request.user):
+        messages.error(request, "You do not have permission to view metrics.")
+        return redirect("dashboard")
+
+    projects = Project.objects.all().order_by("title")
+    selected_project_id = request.GET.get("project")
+    selected_role = request.GET.get("role", "").strip()
+    sort_by = request.GET.get("sort", "name")
+
+    selected_project = None
+    role_titles = []
+    member_rows = []
+
+    totals = {
+        "total_members": 0,
+        "not_submitted": 0,
+        "submitted": 0,
+        "approved": 0,
+        "compliance_issues": 0,
+    }
+
+    project_timeline = None
+    role_counts = []
+
+    if selected_project_id:
+        selected_project = get_object_or_404(
+            Project.objects.prefetch_related(
+                Prefetch(
+                    "roles",
+                    queryset=ProjectRole.objects.select_related("required_form")
+                ),
+                Prefetch(
+                    "invites",
+                    queryset=ProjectInvite.objects.select_related(
+                        "user",
+                        "project_role",
+                        "project_role__required_form",
+                        "reviewed_by",
+                    ).prefetch_related("user__credentials")
+                ),
+            ),
+            pk=selected_project_id,
+        )
+
+        role_titles = list(
+            selected_project.roles.order_by("title").values_list("title", flat=True)
+        )
+
+        invites = list(selected_project.invites.all())
+
+        for invite in invites:
+            derived_status, has_issue, expired_creds = _project_member_status(invite)
+
+            latest_submission = None
+            required_form = invite.project_role.required_form
+            if required_form:
+                latest_submission = (
+                    FormSubmission.objects
+                    .filter(form=required_form, user=invite.user)
+                    .order_by("-submitted_at")
+                    .first()
+                )
+
+            row = {
+                "invite": invite,
+                "user": invite.user,
+                "role": invite.project_role.title,
+                "required_form": required_form,
+                "submission": latest_submission,
+                "derived_status": derived_status,
+                "has_compliance_issue": has_issue,
+                "expired_credentials": expired_creds,
+            }
+
+            if selected_role and invite.project_role.title != selected_role:
+                continue
+
+            member_rows.append(row)
+
+        for row in member_rows:
+            totals["total_members"] += 1
+
+            if row["derived_status"] == "Not Submitted":
+                totals["not_submitted"] += 1
+            elif row["derived_status"] == "Submitted":
+                totals["submitted"] += 1
+            elif row["derived_status"] == "Approved":
+                totals["approved"] += 1
+            elif row["derived_status"] == "Approved - Compliance Issue":
+                totals["approved"] += 1
+                totals["compliance_issues"] += 1
+            elif row["has_compliance_issue"]:
+                totals["compliance_issues"] += 1
+
+        role_counts = []
+        for role in selected_project.roles.all():
+            role_member_count = sum(1 for row in member_rows if row["role"] == role.title)
+            role_counts.append({
+                "role": role.title,
+                "count": role_member_count,
+            })
+
+        if sort_by == "role":
+            member_rows.sort(key=lambda x: (x["role"].lower(), x["user"].first_name.lower(), x["user"].last_name.lower()))
+        elif sort_by == "status":
+            member_rows.sort(key=lambda x: x["derived_status"].lower())
+        else:
+            member_rows.sort(key=lambda x: (x["user"].first_name.lower(), x["user"].last_name.lower(), x["user"].email.lower()))
+
+        today = timezone.localdate()
+        start_date = selected_project.start_date
+        end_date = selected_project.end_date
+
+        if end_date:
+            total_days = max((end_date - start_date).days, 1)
+            elapsed_days = max(min((today - start_date).days, total_days), 0)
+            remaining_days = max((end_date - today).days, 0)
+            progress_percent = int((elapsed_days / total_days) * 100) if total_days > 0 else 0
+        else:
+            total_days = None
+            elapsed_days = max((today - start_date).days, 0)
+            remaining_days = None
+            progress_percent = None
+
+        project_timeline = {
+            "today": today,
+            "start_date": start_date,
+            "end_date": end_date,
+            "total_days": total_days,
+            "elapsed_days": elapsed_days,
+            "remaining_days": remaining_days,
+            "progress_percent": progress_percent,
+        }
+
+    context = {
+        "projects": projects,
+        "selected_project": selected_project,
+        "selected_project_id": selected_project_id,
+        "selected_role": selected_role,
+        "sort_by": sort_by,
+        "role_titles": role_titles,
+        "member_rows": member_rows,
+        "totals": totals,
+        "role_counts": role_counts,
+        "project_timeline": project_timeline,
+    }
+    return render(request, "metrics.html", context)
+
+@login_required
+@require_POST
+def update_project_invite_review_status(request, invite_id):
+    if not _is_admin_or_manager(request.user):
+        return HttpResponseForbidden("Permission denied")
+
+    invite = get_object_or_404(
+        ProjectInvite.objects.select_related("project"),
+        pk=invite_id,
+    )
+
+    new_status = request.POST.get("review_status")
+    if new_status not in ["pending_review", "approved", "rejected"]:
+        messages.error(request, "Invalid review status.")
+        return redirect(f"{reverse('metrics')}?project={invite.project_id}")
+
+    invite.review_status = new_status
+    invite.reviewed_by = request.user
+    invite.reviewed_at = timezone.now()
+    invite.save(update_fields=["review_status", "reviewed_by", "reviewed_at"])
+
+    messages.success(request, f"{invite.user.get_full_name() or invite.user.email} marked as {invite.get_review_status_display()}.")
+    return redirect(f"{reverse('metrics')}?project={invite.project_id}")
+
 
 @require_POST
 @login_required

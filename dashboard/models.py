@@ -215,6 +215,12 @@ class ProjectInvite(models.Model):
         ("declined", "Declined"),
     ]
 
+    REVIEW_STATUS_CHOICES = [
+        ("pending_review", "Pending Review"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+    ]
+
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="invites")
     project_role = models.ForeignKey(
         ProjectRole,
@@ -233,6 +239,19 @@ class ProjectInvite(models.Model):
         related_name="project_invites_sent",
     )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    review_status = models.CharField(
+        max_length=20,
+        choices=REVIEW_STATUS_CHOICES,
+        default="pending_review",
+    )
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="project_invites_reviewed",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
     invited_at = models.DateTimeField(auto_now_add=True)
     viewed_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
