@@ -109,7 +109,7 @@
             <tr>
               <td class="bg-base-300 font-semibold py-1">DOB</td>
               <td>
-                <input type="date" class="input input-bordered input-sm w-64" name="dob">
+                <input type="date" class="input input-bordered input-sm w-64" name="dob" value="{{ ocr_dob }}">
               </td>
 
               <td class="bg-base-300 font-semibold py-1">Emergency Contact Name</td>
@@ -157,8 +157,16 @@
                 >
               </td>
 
-              <td class="bg-base-300 font-semibold py-1"></td>
-              <td></td>
+              <td class="bg-base-300 font-semibold py-1">Driver's Licence No.</td>
+              <td>
+                <input
+                  type="text"
+                  class="input input-bordered input-sm w-64"
+                  placeholder="e.g. 1234567"
+                  name="driver_licence_number"
+                  value="{{ ocr_licence_number }}"
+                >
+              </td>
             </tr>
           </tbody>
         </table>

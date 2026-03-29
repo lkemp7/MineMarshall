@@ -1128,8 +1128,11 @@ def onboarding_default_form(request, token):
         messages.success(request, "Default form completed successfully.")
         return redirect("dashboard")
 
+    ocr_data = request.session.pop(f"license_ocr_{token}", {})
     context = {
         "invite": invite,
         "user_obj": user,
+        "ocr_dob": ocr_data.get("dob") or "",
+        "ocr_licence_number": ocr_data.get("license_number") or "",
     }
     return render(request, "forms/onboarding_default_form.html", context)
