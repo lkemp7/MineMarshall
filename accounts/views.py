@@ -6,6 +6,7 @@ from .forms import UserProfileForm
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import login
 from dashboard.models import OnboardingInvite
+from .ocr import extract_license_fields
 
 @login_required
 def edit_profile(request):
@@ -57,8 +58,33 @@ def setup_account(request, token):
         login(request, user)
 
         if invite.requires_default_form:
-            return redirect('onboarding_default_form', token=invite.token)
+            return redirect('license_scan', token=invite.token)
 
         return redirect('dashboard')
 
     return render(request, "accounts/setup_account.html", {"invite": invite})
+
+
+@login_required
+def license_scan(request, token):
+    invite = get_object_or_404(OnboardingInvite, token=token)
+
+    if request.method == "POST":
+        image_file = request.FILES.get("license_image")
+
+        if image_file:
+            image_bytes = image_file.read()
+            ocr_data = extract_license_fields(image_bytes)
+
+            if all(v is None for v in ocr_data.values()):
+                messages.error(
+                    request,
+                    "Could not read the licence. Please check the image and try again, or skip this step."
+                )
+                return render(request, "accounts/license_scan.html", {"invite": invite})
+
+            request.session[f"license_ocr_{token}"] = ocr_data
+
+        return redirect('onboarding_default_form', token=token)
+
+    return render(request, "accounts/license_scan.html", {"invite": invite})

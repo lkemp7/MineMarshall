@@ -84,6 +84,13 @@ def create_or_update_user_from_post(data):
     _save_req("Medical",        "req_medical_issue",        "req_medical_expiry")
     _save_req("Photo ID",       "req_photo_id_issue",       "req_photo_id_expiry")
 
+    licence_number = (data.get("driver_licence_number") or "").strip()
+    if licence_number:
+        Credential.objects.update_or_create(
+            user=user, title="Driver Licence",
+            defaults={"licence_number": licence_number, "required": False},
+        )
+
     # ---- Optional credentials (variable rows) ----
     # data should be a QueryDict so getlist() works. If you ever pass a plain dict,
     # wrap with: from django.http import QueryDict

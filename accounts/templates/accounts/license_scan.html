@@ -1,0 +1,92 @@
+{% extends 'onboarding_base.html' %}
+
+{% block content %}
+<div class="max-w-xl mx-auto mt-10">
+  <div class="card bg-base-100 shadow-xl">
+    <div class="card-body">
+      <h1 class="card-title text-2xl mb-2">Verify Your Identity</h1>
+
+      <p class="mb-4 text-sm text-base-content/70">
+        Upload a photo of your Australian driver's licence and we'll automatically
+        fill in your name, date of birth, and licence number on the next step.
+      </p>
+
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-error mb-4 text-sm">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+
+      <form id="scanForm" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <!-- Image upload -->
+        <div class="form-control mb-4">
+          <label class="label">
+            <span class="label-text font-medium">Licence Image</span>
+          </label>
+          <input
+            id="licenceInput"
+            type="file"
+            name="license_image"
+            accept="image/*"
+            class="file-input file-input-bordered w-full"
+          />
+        </div>
+
+        <!-- Preview -->
+        <div id="previewWrapper" class="hidden mb-4">
+          <img id="previewImg" src="#" alt="Licence preview"
+               class="rounded-lg border border-base-300 w-full max-h-56 object-contain" />
+        </div>
+
+        <!-- Submit -->
+        <button
+          id="scanBtn"
+          type="submit"
+          class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f] w-full mb-3"
+        >
+          Scan Licence
+        </button>
+
+        <!-- Loading state (hidden until submit) -->
+        <div id="loadingState" class="hidden flex flex-col items-center gap-2 my-2">
+          <span class="loading loading-spinner loading-md text-[#F79327]"></span>
+          <span class="text-sm text-base-content/60">Reading licence… this may take a few seconds</span>
+        </div>
+      </form>
+
+      <!-- Skip link -->
+      <div class="text-center mt-2">
+        <a
+          href="{% url 'onboarding_default_form' token=invite.token %}"
+          class="text-sm text-base-content/50 hover:text-base-content underline"
+        >
+          Skip this step
+        </a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  // Image preview
+  document.getElementById("licenceInput").addEventListener("change", function () {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      document.getElementById("previewImg").src = e.target.result;
+      document.getElementById("previewWrapper").classList.remove("hidden");
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Show loading spinner on submit
+  document.getElementById("scanForm").addEventListener("submit", function () {
+    document.getElementById("scanBtn").classList.add("hidden");
+    document.getElementById("loadingState").classList.remove("hidden");
+  });
+</script>
+{% endblock %}

@@ -16,7 +16,7 @@ LICENSE_PRESET_LABELS = dict(LICENSE_PRESETS)
 
 class Form(models.Model):
     title = models.CharField(max_length=255)
-    description = models.TextField(blank=True, null=True)  # Add this line
+    description = models.TextField(blank=True, null=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_forms')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -49,6 +49,7 @@ class Credential(models.Model):
         related_name="credentials",
     )
     title = models.CharField(max_length=200)
+    licence_number = models.CharField(max_length=20, blank=True, default="")
     issue_date = models.DateField(null=True, blank=True)
     expiry_date = models.DateField(null=True, blank=True)
     required = models.BooleanField(default=False)
