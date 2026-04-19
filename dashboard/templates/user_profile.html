@@ -341,8 +341,8 @@
       
       <div class="form-control mb-4">
         <label class="label"><span class="label-text">Licence Preset</span></label>
-        <select name="license_preset" id="license_preset" class="select select-bordered" onchange="toggleCustomLicenceName()">
-          {% for key, label in license_presets %}
+        <select name="licence_preset" id="licence_preset" class="select select-bordered" onchange="toggleCustomLicenceName()">
+          {% for key, label in licence_presets %}
             <option value="{{ key }}">{{ label }}</option>
           {% endfor %}
         </select>
@@ -406,7 +406,7 @@
   }
 
   function toggleCustomLicenceName() {
-    const preset = document.getElementById('license_preset').value;
+    const preset = document.getElementById('licence_preset').value;
     const wrapper = document.getElementById('customLicenceNameWrapper');
     wrapper.style.display = preset === 'additional' ? 'block' : 'none';
   }
@@ -419,7 +419,7 @@
     document.getElementById('cred_required').checked = required;
 
     const presetKey = findPresetKeyFromTitle(title);
-    document.getElementById('license_preset').value = presetKey;
+    document.getElementById('licence_preset').value = presetKey;
     document.getElementById('custom_title').value = presetKey === 'additional' ? title : '';
     document.getElementById('cred_title').value = title;
 
@@ -431,7 +431,7 @@
     document.getElementById('credentialModalTitle').textContent = 'Add Credential';
     document.getElementById('credentialForm').reset();
     document.getElementById('credential_id').value = '';
-    document.getElementById('license_preset').value = 'driver_licence';
+    document.getElementById('licence_preset').value = 'driver_licence';
     document.getElementById('cred_title').value = '';
     toggleCustomLicenceName();
     document.getElementById('addCredentialModal').close();

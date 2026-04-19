@@ -13,7 +13,7 @@ import uuid
 from django.db import transaction
 from django.db.models import Prefetch
 from .models import FormAssignment, FormSubmission, Answer, Project, ProjectRole, ProjectInvite
-from .models import Form, Question, WorkerProfile, Credential, SubmissionCredentialAttachment,LICENSE_PRESETS,LICENSE_PRESET_LABELS
+from .models import Form, Question, WorkerProfile, Credential, SubmissionCredentialAttachment,LICENCE_PRESETS,LICENCE_PRESET_LABELS
 from django.db.models import Count
 from django.utils import timezone
 from datetime import date
@@ -88,7 +88,7 @@ def user_profile(request, user_id):
         "user_profile.html",
         {
             "user_obj": user_obj,
-            "license_presets": LICENSE_PRESETS,
+            "licence_presets": LICENCE_PRESETS,
             "can_edit_credentials": can_edit_credentials,
         },
     )
@@ -413,14 +413,14 @@ def save_credential(request, pk):
         else:
             credential = Credential(user=user_obj)
 
-        preset = (request.POST.get('license_preset') or '').strip()
+        preset = (request.POST.get('licence_preset') or '').strip()
         custom_title = (request.POST.get('custom_title') or '').strip()
         manual_title = (request.POST.get('title') or '').strip()
 
         if preset == "additional":
             resolved_title = custom_title or manual_title or "Additional Licence"
-        elif preset and preset in LICENSE_PRESET_LABELS:
-            resolved_title = LICENSE_PRESET_LABELS[preset]
+        elif preset and preset in LICENCE_PRESET_LABELS:
+            resolved_title = LICENCE_PRESET_LABELS[preset]
         else:
             resolved_title = manual_title
 
@@ -540,15 +540,15 @@ def add_question_field(request):
         </div>
       </div>
 
-      <div id="license-config-{question_id}" style="display: none;">
+      <div id="licence-config-{question_id}" style="display: none;">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div class="form-control">
             <label class="label">
               <span class="label-text">Licence Type</span>
             </label>
-            <select name="questions[{question_id}][license_preset]"
+            <select name="questions[{question_id}][licence_preset]"
                     class="select select-bordered select-sm"
-                    onchange="toggleLicenseCustom(this, '{question_id}')">
+                    onchange="toggleLicenceCustom(this, '{question_id}')">
               <option value="driver_licence">Driver Licence</option>
               <option value="bus_licence">Bus Licence</option>
               <option value="passport">Passport</option>
@@ -558,11 +558,11 @@ def add_question_field(request):
             </select>
           </div>
 
-          <div class="form-control" id="license-custom-{question_id}" style="display:none;">
+          <div class="form-control" id="licence-custom-{question_id}" style="display:none;">
             <label class="label">
               <span class="label-text">Custom Licence Label</span>
             </label>
-            <input name="questions[{question_id}][custom_license_label]"
+            <input name="questions[{question_id}][custom_licence_label]"
                    type="text"
                    class="input input-bordered input-sm"
                    placeholder="e.g. White Card" />
@@ -605,13 +605,13 @@ def create_form(request):
                 options_text = data.get('options', '')
 
                 if question_type == 'license_upload':
-                    preset = data.get('license_preset', '')
-                    custom_label = (data.get('custom_license_label', '') or '').strip()
+                    preset = data.get('licence_preset', '')
+                    custom_label = (data.get('custom_licence_label', '') or '').strip()
 
                     if preset == 'additional':
                         options_text = custom_label or 'Additional Licence'
                     else:
-                        options_text = LICENSE_PRESET_LABELS.get(preset, 'Licence')
+                        options_text = LICENCE_PRESET_LABELS.get(preset, 'Licence')
 
                 Question.objects.create(
                     form=form,
@@ -706,13 +706,13 @@ def update_form(request, pk):
             options_text = data.get('options', '')
 
             if question_type == 'license_upload':
-                preset = data.get('license_preset', '')
-                custom_label = (data.get('custom_license_label', '') or '').strip()
+                preset = data.get('licence_preset', '')
+                custom_label = (data.get('custom_licence_label', '') or '').strip()
 
                 if preset == 'additional':
                     options_text = custom_label or 'Additional Licence'
                 else:
-                    options_text = LICENSE_PRESET_LABELS.get(preset, 'Licence')
+                    options_text = LICENCE_PRESET_LABELS.get(preset, 'Licence')
 
             Question.objects.create(
                 form=form_obj,
@@ -1128,11 +1128,11 @@ def onboarding_default_form(request, token):
         messages.success(request, "Default form completed successfully.")
         return redirect("dashboard")
 
-    ocr_data = request.session.pop(f"license_ocr_{token}", {})
+    ocr_data = request.session.pop(f"licence_ocr_{token}", {})
     context = {
         "invite": invite,
         "user_obj": user,
         "ocr_dob": ocr_data.get("dob") or "",
-        "ocr_licence_number": ocr_data.get("license_number") or "",
+        "ocr_licence_number": ocr_data.get("licence_number") or "",
     }
     return render(request, "forms/onboarding_default_form.html", context)
