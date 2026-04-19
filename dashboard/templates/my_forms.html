@@ -149,7 +149,7 @@
 
   function toggleOptions(select, questionNum) {
     const optionsDiv = document.getElementById(`options-${questionNum}`);
-    const licenseDiv = document.getElementById(`license-config-${questionNum}`);
+    const licenceDiv = document.getElementById(`licence-config-${questionNum}`);
     const type = select.value;
 
     if (['radio', 'checkbox', 'dropdown'].includes(type)) {
@@ -159,14 +159,14 @@
     }
 
     if (type === 'license_upload') {
-      licenseDiv.style.display = 'block';
+      licenceDiv.style.display = 'block';
     } else {
-      licenseDiv.style.display = 'none';
+      licenceDiv.style.display = 'none';
     }
   }
 
-  function toggleLicenseCustom(select, questionNum) {
-    const customDiv = document.getElementById(`license-custom-${questionNum}`);
+  function toggleLicenceCustom(select, questionNum) {
+    const customDiv = document.getElementById(`licence-custom-${questionNum}`);
     customDiv.style.display = select.value === 'additional' ? 'block' : 'none';
   }
 

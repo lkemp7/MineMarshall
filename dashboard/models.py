@@ -2,8 +2,9 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 from django.utils import timezone
+import os
 
-LICENSE_PRESETS = [
+LICENCE_PRESETS = [
     ("driver_licence", "Driver Licence"),
     ("bus_licence", "Bus Licence"),
     ("passport", "Passport"),
@@ -12,7 +13,7 @@ LICENSE_PRESETS = [
     ("additional", "Additional Licence"),
 ]
 
-LICENSE_PRESET_LABELS = dict(LICENSE_PRESETS)
+LICENCE_PRESET_LABELS = dict(LICENCE_PRESETS)
 
 class Form(models.Model):
     title = models.CharField(max_length=255)
@@ -41,6 +42,9 @@ class WorkerProfile(models.Model):
     def __str__(self):
         return f"Profile for {self.user.get_full_name() or self.user.email}"
     
+def upload_path(instance, filename):
+    ext = os.path.splitext(filename)[1]
+    return f"credentials/{instance.user_id}/{instance.title}{ext}"
 
 class Credential(models.Model):
     user = models.ForeignKey(
@@ -53,7 +57,7 @@ class Credential(models.Model):
     issue_date = models.DateField(null=True, blank=True)
     expiry_date = models.DateField(null=True, blank=True)
     required = models.BooleanField(default=False)
-    image = models.ImageField(upload_to="credentials/%Y/%m/", null=True, blank=True)
+    image = models.ImageField(upload_to=upload_path, null=True, blank=True)
 
     @property
     def status(self):
@@ -293,5 +297,3 @@ class OnboardingInvite(models.Model):
 
     def __str__(self):
         return f"{self.email} - {self.status}"
-
-

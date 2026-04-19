@@ -5,8 +5,9 @@ from django.contrib import messages
 from .forms import UserProfileForm
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import login
-from dashboard.models import OnboardingInvite
-from .ocr import extract_license_fields
+from dashboard.models import OnboardingInvite, Credential
+from django.core.files.base import ContentFile
+from .ocr import extract_licence_fields
 
 @login_required
 def edit_profile(request):
@@ -55,10 +56,11 @@ def setup_account(request, token):
             invite.status = "account_created"
         invite.save()
 
+        list(messages.get_messages(request))
         login(request, user)
 
         if invite.requires_default_form:
-            return redirect('license_scan', token=invite.token)
+            return redirect('licence_scan', token=invite.token)
 
         return redirect('dashboard')
 
@@ -66,25 +68,36 @@ def setup_account(request, token):
 
 
 @login_required
-def license_scan(request, token):
+def licence_scan(request, token):
     invite = get_object_or_404(OnboardingInvite, token=token)
 
     if request.method == "POST":
-        image_file = request.FILES.get("license_image")
+        image_file = request.FILES.get("licence_image")
 
         if image_file:
             image_bytes = image_file.read()
-            ocr_data = extract_license_fields(image_bytes)
+            ocr_data = extract_licence_fields(image_bytes)
 
-            if all(v is None for v in ocr_data.values()):
+            if not any(ocr_data.get(k) for k in ("first_name", "last_name", "dob", "licence_number", "expiry")):
                 messages.error(
                     request,
                     "Could not read the licence. Please check the image and try again, or skip this step."
                 )
-                return render(request, "accounts/license_scan.html", {"invite": invite})
+                return render(request, "accounts/licence_scan.html", {"invite": invite})
 
-            request.session[f"license_ocr_{token}"] = ocr_data
+            request.session[f"licence_ocr_{token}"] = ocr_data
+            
+            Credential.objects.update_or_create(
+                user = invite.user,
+                title = ocr_data["title"],
+                defaults = {
+                    "licence_number": ocr_data["licence_number"],
+                    "expiry_date": ocr_data["expiry"],
+                    "image": ContentFile(image_bytes, name = image_file.name), 
+                    "required": False,
+                },
+            )
 
         return redirect('onboarding_default_form', token=token)
 
-    return render(request, "accounts/license_scan.html", {"invite": invite})
+    return render(request, "accounts/licence_scan.html", {"invite": invite})
