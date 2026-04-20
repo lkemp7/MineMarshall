@@ -57,12 +57,82 @@
     </div>
   </div>
 
+  {% if not selected_project %}
+    <div class="alert alert-info">
+      <span>Select a project above or choose a project card to view metrics.</span>
+    </div>
+  {% endif %}
+
+  <div class="space-y-3">
+    <div class="flex items-center justify-between">
+      <h2 class="text-xl font-semibold">Projects</h2>
+      <div class="text-sm opacity-70">Click a project card to load its metrics</div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+      {% for card in project_cards %}
+        <a href="{% url 'metrics' %}?project={{ card.project.id }}"
+           class="card shadow-sm text-white bg-gradient-to-br {{ card.colour_class }} {% if selected_project and selected_project.id == card.project.id %}ring-4 ring-[#F79327]{% endif %} hover:scale-[1.01] transition">
+          <div class="card-body">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <h3 class="text-xl font-bold">{{ card.project.title }}</h3>
+                <p class="text-sm text-white/80 mt-1">
+                  {% if card.project.end_date %}
+                    {{ card.project.start_date|date:"Y-m-d" }} → {{ card.project.end_date|date:"Y-m-d" }}
+                  {% else %}
+                    Started {{ card.project.start_date|date:"Y-m-d" }} • Indefinite
+                  {% endif %}
+                </p>
+              </div>
+              <div class="badge badge-neutral badge-lg">{{ card.totals.total_members }}</div>
+            </div>
+
+            {% if card.project.description %}
+              <p class="text-sm text-white/90 line-clamp-2">{{ card.project.description|truncatechars:100 }}</p>
+            {% endif %}
+
+            <div class="grid grid-cols-2 gap-2 text-sm mt-2">
+              <div class="bg-white/15 rounded-lg p-2">
+                <div class="opacity-80">Not Submitted</div>
+                <div class="font-bold text-lg">{{ card.totals.not_submitted }}</div>
+              </div>
+              <div class="bg-white/15 rounded-lg p-2">
+                <div class="opacity-80">Submitted</div>
+                <div class="font-bold text-lg">{{ card.totals.submitted }}</div>
+              </div>
+              <div class="bg-white/15 rounded-lg p-2">
+                <div class="opacity-80">Approved</div>
+                <div class="font-bold text-lg">{{ card.totals.approved }}</div>
+              </div>
+              <div class="bg-white/15 rounded-lg p-2">
+                <div class="opacity-80">Issues</div>
+                <div class="font-bold text-lg">{{ card.totals.compliance_issues }}</div>
+              </div>
+            </div>
+          </div>
+        </a>
+      {% empty %}
+        <div class="alert alert-info col-span-full">
+          <span>No projects available yet.</span>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
   {% if selected_project %}
-    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
       <div class="card bg-base-200 shadow-sm">
         <div class="card-body">
           <div class="text-sm opacity-70">Total Employees</div>
           <div class="text-3xl font-bold">{{ totals.total_members }}</div>
+        </div>
+      </div>
+
+      <div class="card bg-base-200 shadow-sm">
+        <div class="card-body">
+          <div class="text-sm opacity-70">Completion Rate</div>
+          <div class="text-3xl font-bold">{{ totals.completion_rate }}%</div>
         </div>
       </div>
 
@@ -75,8 +145,8 @@
 
       <div class="card bg-base-200 shadow-sm">
         <div class="card-body">
-          <div class="text-sm opacity-70">Submitted</div>
-          <div class="text-3xl font-bold">{{ totals.submitted }}</div>
+          <div class="text-sm opacity-70">Pending Review</div>
+          <div class="text-3xl font-bold">{{ totals.pending_review }}</div>
         </div>
       </div>
 
@@ -91,6 +161,61 @@
         <div class="card-body">
           <div class="text-sm opacity-70">Compliance Issues</div>
           <div class="text-3xl font-bold">{{ totals.compliance_issues }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card bg-base-200 shadow-sm">
+      <div class="card-body">
+        <h2 class="card-title">Status Distribution</h2>
+
+        <div class="w-full rounded-2xl overflow-hidden bg-base-300 h-8 flex">
+          {% if status_bar.not_submitted_percent > 0 %}
+            <div class="h-8 bg-warning flex items-center justify-center text-xs text-black font-semibold"
+                 style="width: {{ status_bar.not_submitted_percent }}%">
+              {% if status_bar.not_submitted_percent >= 10 %}{{ status_bar.not_submitted_percent }}%{% endif %}
+            </div>
+          {% endif %}
+
+          {% if status_bar.submitted_percent > 0 %}
+            <div class="h-8 bg-info flex items-center justify-center text-xs text-white font-semibold"
+                 style="width: {{ status_bar.submitted_percent }}%">
+              {% if status_bar.submitted_percent >= 10 %}{{ status_bar.submitted_percent }}%{% endif %}
+            </div>
+          {% endif %}
+
+          {% if status_bar.approved_percent > 0 %}
+            <div class="h-8 bg-success flex items-center justify-center text-xs text-white font-semibold"
+                 style="width: {{ status_bar.approved_percent }}%">
+              {% if status_bar.approved_percent >= 10 %}{{ status_bar.approved_percent }}%{% endif %}
+            </div>
+          {% endif %}
+
+          {% if status_bar.compliance_percent > 0 %}
+            <div class="h-8 bg-error flex items-center justify-center text-xs text-white font-semibold"
+                 style="width: {{ status_bar.compliance_percent }}%">
+              {% if status_bar.compliance_percent >= 10 %}{{ status_bar.compliance_percent }}%{% endif %}
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-sm">
+          <div class="flex items-center gap-2">
+            <div class="w-4 h-4 rounded bg-warning"></div>
+            <span>Not Submitted</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-4 h-4 rounded bg-info"></div>
+            <span>Submitted / Pending Review</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-4 h-4 rounded bg-success"></div>
+            <span>Approved</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-4 h-4 rounded bg-error"></div>
+            <span>Compliance Issue</span>
+          </div>
         </div>
       </div>
     </div>
@@ -123,11 +248,16 @@
         <div class="card-body">
           <h2 class="card-title">Employees Per Role</h2>
           {% if role_counts %}
-            <div class="space-y-3">
+            <div class="space-y-4">
               {% for item in role_counts %}
-                <div class="flex items-center justify-between">
-                  <span>{{ item.role }}</span>
-                  <span class="badge badge-neutral">{{ item.count }}</span>
+                <div class="space-y-1">
+                  <div class="flex items-center justify-between text-sm">
+                    <span>{{ item.role }}</span>
+                    <span class="font-semibold">{{ item.count }}</span>
+                  </div>
+                  <div class="w-full bg-base-300 rounded-full h-4 overflow-hidden">
+                    <div class="bg-[#F79327] h-4 rounded-full" style="width: {{ item.bar_percent }}%"></div>
+                  </div>
                 </div>
               {% endfor %}
             </div>
@@ -244,11 +374,6 @@
           </div>
         {% endif %}
       </div>
-    </div>
-
-  {% else %}
-    <div class="alert alert-info">
-      <span>Select a project above to view metrics.</span>
     </div>
   {% endif %}
 </div>

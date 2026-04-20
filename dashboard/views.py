@@ -128,7 +128,22 @@ def metrics(request):
         messages.error(request, "You do not have permission to view metrics.")
         return redirect("dashboard")
 
-    projects = Project.objects.all().order_by("title")
+    projects = Project.objects.prefetch_related(
+        Prefetch(
+            "invites",
+            queryset=ProjectInvite.objects.select_related(
+                "user",
+                "project_role",
+                "project_role__required_form",
+                "reviewed_by",
+            ).prefetch_related("user__credentials")
+        ),
+        Prefetch(
+            "roles",
+            queryset=ProjectRole.objects.select_related("required_form")
+        ),
+    ).order_by("title")
+
     selected_project_id = request.GET.get("project")
     selected_role = request.GET.get("role", "").strip()
     sort_by = request.GET.get("sort", "name")
@@ -142,31 +157,75 @@ def metrics(request):
         "not_submitted": 0,
         "submitted": 0,
         "approved": 0,
+        "pending_review": 0,
         "compliance_issues": 0,
+        "rejected": 0,
+        "completion_rate": 0,
     }
 
     project_timeline = None
     role_counts = []
+    project_cards = []
+
+    status_bar = {
+        "not_submitted_percent": 0,
+        "submitted_percent": 0,
+        "approved_percent": 0,
+        "compliance_percent": 0,
+    }
+
+    max_role_count = 0
+
+    colour_classes = [
+        "from-orange-400 to-amber-500",
+        "from-sky-400 to-blue-500",
+        "from-emerald-400 to-green-500",
+        "from-fuchsia-400 to-purple-500",
+        "from-rose-400 to-pink-500",
+        "from-cyan-400 to-teal-500",
+        "from-yellow-400 to-orange-500",
+        "from-indigo-400 to-violet-500",
+    ]
+
+    for index, project in enumerate(projects):
+        invites = list(project.invites.all())
+
+        card_totals = {
+            "total_members": 0,
+            "not_submitted": 0,
+            "submitted": 0,
+            "approved": 0,
+            "pending_review": 0,
+            "compliance_issues": 0,
+            "rejected": 0,
+        }
+
+        for invite in invites:
+            derived_status, has_issue, expired_creds = _project_member_status(invite)
+
+            card_totals["total_members"] += 1
+
+            if derived_status == "Not Submitted":
+                card_totals["not_submitted"] += 1
+            elif derived_status == "Submitted":
+                card_totals["submitted"] += 1
+                card_totals["pending_review"] += 1
+            elif derived_status == "Approved":
+                card_totals["approved"] += 1
+            elif derived_status == "Approved - Compliance Issue":
+                card_totals["approved"] += 1
+                card_totals["compliance_issues"] += 1
+            elif derived_status == "Rejected":
+                card_totals["rejected"] += 1
+
+        project_cards.append({
+            "project": project,
+            "totals": card_totals,
+            "colour_class": colour_classes[index % len(colour_classes)],
+        })
 
     if selected_project_id:
-        selected_project = get_object_or_404(
-            Project.objects.prefetch_related(
-                Prefetch(
-                    "roles",
-                    queryset=ProjectRole.objects.select_related("required_form")
-                ),
-                Prefetch(
-                    "invites",
-                    queryset=ProjectInvite.objects.select_related(
-                        "user",
-                        "project_role",
-                        "project_role__required_form",
-                        "reviewed_by",
-                    ).prefetch_related("user__credentials")
-                ),
-            ),
-            pk=selected_project_id,
-        )
+        selected_project = get_object_or_404(projects, pk=selected_project_id)
 
         role_titles = list(
             selected_project.roles.order_by("title").values_list("title", flat=True)
@@ -210,13 +269,23 @@ def metrics(request):
                 totals["not_submitted"] += 1
             elif row["derived_status"] == "Submitted":
                 totals["submitted"] += 1
+                totals["pending_review"] += 1
             elif row["derived_status"] == "Approved":
                 totals["approved"] += 1
             elif row["derived_status"] == "Approved - Compliance Issue":
                 totals["approved"] += 1
                 totals["compliance_issues"] += 1
-            elif row["has_compliance_issue"]:
-                totals["compliance_issues"] += 1
+            elif row["derived_status"] == "Rejected":
+                totals["rejected"] += 1
+
+        if totals["total_members"] > 0:
+            completed_count = totals["approved"] + totals["compliance_issues"]
+            totals["completion_rate"] = int((completed_count / totals["total_members"]) * 100)
+
+            status_bar["not_submitted_percent"] = int((totals["not_submitted"] / totals["total_members"]) * 100)
+            status_bar["submitted_percent"] = int((totals["submitted"] / totals["total_members"]) * 100)
+            status_bar["approved_percent"] = int((totals["approved"] / totals["total_members"]) * 100)
+            status_bar["compliance_percent"] = int((totals["compliance_issues"] / totals["total_members"]) * 100)
 
         role_counts = []
         for role in selected_project.roles.all():
@@ -225,6 +294,11 @@ def metrics(request):
                 "role": role.title,
                 "count": role_member_count,
             })
+
+        if role_counts:
+            max_role_count = max(item["count"] for item in role_counts) or 1
+            for item in role_counts:
+                item["bar_percent"] = int((item["count"] / max_role_count) * 100) if max_role_count > 0 else 0
 
         if sort_by == "role":
             member_rows.sort(key=lambda x: (x["role"].lower(), x["user"].first_name.lower(), x["user"].last_name.lower()))
@@ -260,6 +334,7 @@ def metrics(request):
 
     context = {
         "projects": projects,
+        "project_cards": project_cards,
         "selected_project": selected_project,
         "selected_project_id": selected_project_id,
         "selected_role": selected_role,
@@ -269,6 +344,8 @@ def metrics(request):
         "totals": totals,
         "role_counts": role_counts,
         "project_timeline": project_timeline,
+        "status_bar": status_bar,
+        "max_role_count": max_role_count,
     }
     return render(request, "metrics.html", context)
 
