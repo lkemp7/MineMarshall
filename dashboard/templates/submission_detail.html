@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-4xl text-[#F79327]">Submission Review</h1>
+      <p class="opacity-70 mt-2">
+        {{ submission.user.first_name }} {{ submission.user.last_name }} • {{ submission.form.title }}
+      </p>
+    </div>
+    {% if linked_invite %}
+      <a href="{% url 'project_submissions' linked_invite.project.id %}" class="btn btn-ghost">← Back to Submissions</a>
+    {% else %}
+      <a href="{% url 'dashboard' %}" class="btn btn-ghost">← Back</a>
+    {% endif %}
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="card bg-base-200 shadow-sm">
+      <div class="card-body">
+        <div class="text-sm opacity-70">Submitted By</div>
+        <div class="font-semibold">{{ submission.user.first_name }} {{ submission.user.last_name }}</div>
+        <div class="text-sm opacity-70">{{ submission.user.email }}</div>
+      </div>
+    </div>
+
+    <div class="card bg-base-200 shadow-sm">
+      <div class="card-body">
+        <div class="text-sm opacity-70">Submitted At</div>
+        <div class="font-semibold">{{ submission.submitted_at|date:"Y-m-d H:i" }}</div>
+      </div>
+    </div>
+
+    <div class="card bg-base-200 shadow-sm">
+      <div class="card-body">
+        <div class="text-sm opacity-70">Review Status</div>
+        {% if linked_invite %}
+          {% if linked_invite.review_status == 'approved' %}
+            <span class="badge badge-success">Approved</span>
+          {% elif linked_invite.review_status == 'rejected' %}
+            <span class="badge badge-error">Rejected</span>
+          {% else %}
+            <span class="badge badge-warning">Pending Review</span>
+          {% endif %}
+        {% else %}
+          <span class="badge badge-ghost">Unlinked</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if linked_invite %}
+  <div class="card bg-base-200 shadow-sm">
+    <div class="card-body">
+      <h2 class="card-title">Project Context</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div><span class="opacity-70">Project:</span> {{ linked_invite.project.title }}</div>
+        <div><span class="opacity-70">Role:</span> {{ linked_invite.project_role.title }}</div>
+        <div><span class="opacity-70">Invite Status:</span> {{ linked_invite.get_status_display }}</div>
+      </div>
+
+      {% if linked_invite.review_status == 'rejected' and linked_invite.rejection_reason %}
+        <div class="alert alert-error mt-4">
+          <div>
+            <div class="font-semibold">Previous Rejection Reason</div>
+            <div class="text-sm">{{ linked_invite.rejection_reason }}</div>
+            {% if linked_invite.allow_reapply %}
+              <div class="text-xs mt-1 opacity-80">Reapply was allowed for this user.</div>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+        <div class="bg-base-100 rounded-xl p-4 border border-base-300">
+          <h3 class="font-semibold mb-3">Approve Submission</h3>
+          <form method="post" action="{% url 'update_project_invite_review_status' linked_invite.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="review_status" value="approved">
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <button type="submit" class="btn btn-success text-white w-full">Approve Submission</button>
+          </form>
+        </div>
+
+        <div class="bg-base-100 rounded-xl p-4 border border-base-300">
+          <h3 class="font-semibold mb-3">Reject Submission</h3>
+          <form method="post" action="{% url 'update_project_invite_review_status' linked_invite.id %}" class="space-y-3">
+            {% csrf_token %}
+            <input type="hidden" name="review_status" value="rejected">
+            <input type="hidden" name="next" value="{{ request.path }}">
+
+            <div class="form-control">
+              <label class="label"><span class="label-text">Reason for rejection *</span></label>
+              <textarea name="rejection_reason" class="textarea textarea-bordered" rows="4" required
+                        placeholder="Explain what needs to be fixed before the user can be approved."></textarea>
+            </div>
+
+            <div class="form-control">
+              <label class="cursor-pointer label justify-start gap-3">
+                <input type="checkbox" name="allow_reapply" class="checkbox checkbox-primary">
+                <span class="label-text">Allow reapply</span>
+              </label>
+            </div>
+
+            <button type="submit" class="btn btn-error text-white w-full">Reject Submission</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+  <div class="card bg-base-200 shadow-sm">
+    <div class="card-body">
+      <h2 class="card-title">Form Answers</h2>
+
+      <div class="space-y-4">
+        {% for answer in answers %}
+          <div class="bg-base-100 rounded-xl p-4 border border-base-300">
+            <div class="font-semibold mb-2">{{ answer.question.question_text }}</div>
+
+            {% if answer.answer_file %}
+              <div class="space-y-2">
+                <a href="{{ answer.answer_file.url }}" target="_blank" class="link link-primary">Open uploaded file</a>
+                <img src="{{ answer.answer_file.url }}" alt="Uploaded answer file" class="max-h-80 rounded-lg border border-base-300" />
+              </div>
+            {% else %}
+              <div class="whitespace-pre-wrap">{{ answer.answer_text|default:"—" }}</div>
+            {% endif %}
+          </div>
+        {% empty %}
+          <div class="opacity-70">No answers found.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card bg-base-200 shadow-sm">
+    <div class="card-body">
+      <h2 class="card-title">Attached Profile Licences</h2>
+
+      {% if submission.attached_credentials.all %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {% for cred in submission.attached_credentials.all %}
+            <div class="bg-base-100 rounded-xl p-4 border border-base-300 space-y-2">
+              <div class="font-semibold">{{ cred.title }}</div>
+              <a href="{{ cred.image.url }}" target="_blank" class="link link-primary">Open licence image</a>
+              <img src="{{ cred.image.url }}" alt="{{ cred.title }}" class="max-h-72 rounded-lg border border-base-300" />
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="opacity-70">No attached profile licences.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

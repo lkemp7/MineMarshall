@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-4xl text-[#F79327]">Project Submissions</h1>
+      <p class="opacity-70 mt-2">{{ project.title }}</p>
+    </div>
+    <a href="{% url 'project_detail' project.id %}" class="btn btn-ghost">← Back to Project</a>
+  </div>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert {% if message.tags == 'error' %}alert-error{% else %}alert-success{% endif %}">
+        <span>{{ message }}</span>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  {% for section in role_sections %}
+    <div class="card bg-base-200 shadow-sm">
+      <div class="card-body">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="card-title">{{ section.role.title }}</h2>
+            {% if section.role.required_form %}
+              <p class="text-sm opacity-70">Required form: {{ section.role.required_form.title }}</p>
+            {% else %}
+              <p class="text-sm opacity-70">No required form assigned</p>
+            {% endif %}
+          </div>
+          <div class="badge badge-neutral">{{ section.rows|length }} users</div>
+        </div>
+
+        {% if section.rows %}
+          <div class="overflow-x-auto">
+            <table class="table table-zebra">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Submission</th>
+                  <th>Review</th>
+                  <th>Compliance</th>
+                  <th>Overall Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in section.rows %}
+                  <tr>
+                    <td>{{ row.user.first_name }} {{ row.user.last_name }}</td>
+                    <td>{{ row.user.email }}</td>
+                    <td>
+                      {% if row.submission %}
+                        <span class="badge badge-info">Submitted</span>
+                        <div class="text-xs opacity-70 mt-1">{{ row.submission.submitted_at|date:"Y-m-d H:i" }}</div>
+                      {% else %}
+                        <span class="badge badge-warning">Not Submitted</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if row.invite.review_status == 'approved' %}
+                        <span class="badge badge-success">Approved</span>
+                      {% elif row.invite.review_status == 'rejected' %}
+                        <span class="badge badge-error">Rejected</span>
+                      {% else %}
+                        <span class="badge badge-warning">Pending Review</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if row.has_compliance_issue %}
+                        <div class="badge badge-error">Issue</div>
+                        <div class="text-xs opacity-70 mt-1">
+                          {% for cred in row.expired_credentials %}
+                            {{ cred.title }}{% if not forloop.last %}, {% endif %}
+                          {% endfor %}
+                        </div>
+                      {% else %}
+                        <span class="badge badge-success">OK</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if row.derived_status == 'Approved' %}
+                        <span class="badge badge-success">{{ row.derived_status }}</span>
+                      {% elif row.derived_status == 'Approved - Compliance Issue' %}
+                        <span class="badge badge-error">{{ row.derived_status }}</span>
+                      {% elif row.derived_status == 'Submitted' %}
+                        <span class="badge badge-info">{{ row.derived_status }}</span>
+                      {% elif row.derived_status == 'Rejected' %}
+                        <span class="badge badge-error">{{ row.derived_status }}</span>
+                      {% else %}
+                        <span class="badge badge-warning">{{ row.derived_status }}</span>
+                      {% endif %}
+                    </td>
+                        <td>
+                            {% if row.submission %}
+                                <a href="{% url 'view_submission' row.submission.id %}"
+                                    class="btn btn-xs btn-outline w-full">
+                                    View Submission
+                                </a>
+                            {% else %}
+                                <span class="opacity-60 text-xs">Awaiting submission</span>
+                            {% endif %}
+                        </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="alert alert-info">
+            <span>No invited users for this role yet.</span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  {% empty %}
+    <div class="alert alert-info">
+      <span>No roles found for this project yet.</span>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}
