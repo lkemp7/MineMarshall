@@ -176,6 +176,7 @@
                     <td>{{ row.invite.invited_at|date:"Y-m-d" }}</td>
                     <td>
                       {% if row.submission %}
+                        <a href="{% url 'view_submission' row.submission.id %}" class="link link-hover text-xs text-[#F79327]"> View Answers</a>
                         {{ row.submission.submitted_at|date:"Y-m-d H:i" }}
                       {% else %}
                         <span class="opacity-60">Not submitted</span>
@@ -252,4 +253,4 @@
     </div>
   {% endif %}
 </div>
-{% endblock %}
+{% endblock content %}

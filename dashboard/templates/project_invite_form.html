@@ -1,124 +1,151 @@
 {% extends "base.html" %}
 {% block content %}
-
-<div class="max-w-4xl mx-auto">
-  <div class="flex items-center justify-between mb-6">
-    <div>
-      <h1 class="text-4xl text-[#F79327]">{{ form_obj.title }}</h1>
-      <p class="opacity-70 mt-2">
-        Project: <span class="font-semibold">{{ invite.project.title }}</span>
-        • Role: <span class="font-semibold">{{ invite.project_role.title }}</span>
-      </p>
-      {% if form_obj.description %}
-      <p class="mt-2">{{ form_obj.description }}</p>
-      {% endif %}
-    </div>
-    <a href="{% url 'my_projects' %}" class="btn btn-ghost">← Back to My Projects</a>
-  </div>
-
-  {% if messages %}
-    {% for message in messages %}
-      <div class="alert mb-4 {% if message.tags == 'error' %}alert-error{% else %}alert-success{% endif %}">
-        <span>{{ message }}</span>
+  <div class="max-w-4xl mx-auto">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-4xl text-[#F79327]">{{ form_obj.title }}</h1>
+        <p class="opacity-70 mt-2">
+          Project: <span class="font-semibold">{{ invite.project.title }}</span>
+          • Role: <span class="font-semibold">{{ invite.project_role.title }}</span>
+        </p>
+        {% if form_obj.description %}<p class="mt-2">{{ form_obj.description }}</p>{% endif %}
       </div>
-    {% endfor %}
-  {% endif %}
-
-  <div class="card bg-base-200 shadow-sm">
-    <div class="card-body">
-      <form method="post" enctype="multipart/form-data" class="space-y-5">
-        {% csrf_token %}
-
-        {% for q in questions %}
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text font-semibold">
-                {{ forloop.counter }}. {{ q.question_text }}
-                {% if q.is_required %}<span class="text-error">*</span>{% endif %}
-              </span>
-            </label>
-
-            {% if q.question_type == 'text' %}
-              <input type="text" name="question_{{ q.id }}" class="input input-bordered w-full" {% if q.is_required %}required{% endif %} />
-
-            {% elif q.question_type == 'email' %}
-              <input type="email" name="question_{{ q.id }}" class="input input-bordered w-full" {% if q.is_required %}required{% endif %} />
-
-            {% elif q.question_type == 'phone' %}
-              <input type="text" name="question_{{ q.id }}" class="input input-bordered w-full" {% if q.is_required %}required{% endif %} />
-
-            {% elif q.question_type == 'number' %}
-              <input type="number" name="question_{{ q.id }}" class="input input-bordered w-full" {% if q.is_required %}required{% endif %} />
-
-            {% elif q.question_type == 'date' %}
-              <input type="date" name="question_{{ q.id }}" class="input input-bordered w-full" {% if q.is_required %}required{% endif %} />
-
-            {% elif q.question_type == 'time' %}
-              <input type="time" name="question_{{ q.id }}" class="input input-bordered w-full" {% if q.is_required %}required{% endif %} />
-
-            {% elif q.question_type == 'textarea' %}
-              <textarea name="question_{{ q.id }}" class="textarea textarea-bordered w-full" rows="4" {% if q.is_required %}required{% endif %}></textarea>
-
-            {% elif q.question_type == 'dropdown' %}
-              <select name="question_{{ q.id }}" class="select select-bordered w-full" {% if q.is_required %}required{% endif %}>
-                <option value="">-- Select --</option>
-                {% for opt in q.options %}
-                  <option value="{{ opt }}">{{ opt }}</option>
-                {% endfor %}
-              </select>
-
-            {% elif q.question_type == 'radio' %}
-              <div class="space-y-2">
-                {% for opt in q.options %}
-                  <label class="label cursor-pointer justify-start gap-3">
-                    <input type="radio" class="radio radio-sm" name="question_{{ q.id }}" value="{{ opt }}" {% if q.is_required %}required{% endif %}>
-                    <span class="label-text">{{ opt }}</span>
-                  </label>
-                {% endfor %}
-              </div>
-
-            {% elif q.question_type == 'checkbox' %}
-              <div class="space-y-2">
-                {% for opt in q.options %}
-                  <label class="label cursor-pointer justify-start gap-3">
-                    <input type="checkbox" class="checkbox checkbox-sm" name="question_{{ q.id }}" value="{{ opt }}">
-                    <span class="label-text">{{ opt }}</span>
-                  </label>
-                {% endfor %}
-              </div>
-              {% if q.is_required %}
-                <label class="label">
-                  <span class="label-text-alt text-warning">At least one option should be selected.</span>
-                </label>
-              {% endif %}
-
-            {% elif q.question_type == 'file' %}
-              <input type="file" name="question_{{ q.id }}" accept="image/*" class="file-input file-input-bordered w-full" {% if q.is_required %}required{% endif %} />
-
-            {% elif q.question_type == 'license_upload' %}
-              <label class="label">
-                <span class="label-text-alt opacity-70">Upload: {{ q.options_text }}</span>
-              </label>
-              <input type="file" name="question_{{ q.id }}" accept="image/*" class="file-input file-input-bordered w-full" {% if q.is_required %}required{% endif %} />
-
-            {% else %}
-              <input type="text" name="question_{{ q.id }}" class="input input-bordered w-full" {% if q.is_required %}required{% endif %} />
-            {% endif %}
-          </div>
-        {% empty %}
-          <div class="alert alert-info">
-            <span>This form has no questions yet.</span>
-          </div>
-        {% endfor %}
-
-        <div class="pt-4 border-t">
-          <button type="submit" class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]">
-            Submit Form
-          </button>
+      <a href="{% url 'my_projects' %}" class="btn btn-ghost">← Back to My Projects</a>
+    </div>
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert mb-4 {% if message.tags == 'error' %}alert-error{% else %}alert-success{% endif %}">
+          <span>{{ message }}</span>
         </div>
-      </form>
+      {% endfor %}
+    {% endif %}
+    <div class="card bg-base-200 shadow-sm">
+      <div class="card-body">
+        <form method="post" enctype="multipart/form-data" class="space-y-5">
+          {% csrf_token %}
+          {% for q in questions %}
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text font-semibold">
+                  {{ forloop.counter }}. {{ q.question_text }}
+                  {% if q.is_required %}<span class="text-error">*</span>{% endif %}
+                </span>
+              </label>
+              {% if q.question_type == 'text' %}
+                <input type="text"
+                       name="question_{{ q.id }}"
+                       class="input input-bordered w-full"
+                       {% if q.is_required %}required{% endif %} />
+              {% elif q.question_type == 'email' %}
+                <input type="email"
+                       name="question_{{ q.id }}"
+                       class="input input-bordered w-full"
+                       {% if q.is_required %}required{% endif %} />
+              {% elif q.question_type == 'phone' %}
+                <input type="text"
+                       name="question_{{ q.id }}"
+                       class="input input-bordered w-full"
+                       {% if q.is_required %}required{% endif %} />
+              {% elif q.question_type == 'number' %}
+                <input type="number"
+                       name="question_{{ q.id }}"
+                       class="input input-bordered w-full"
+                       {% if q.is_required %}required{% endif %} />
+              {% elif q.question_type == 'date' %}
+                <input type="date"
+                       name="question_{{ q.id }}"
+                       class="input input-bordered w-full"
+                       {% if q.is_required %}required{% endif %} />
+              {% elif q.question_type == 'time' %}
+                <input type="time"
+                       name="question_{{ q.id }}"
+                       class="input input-bordered w-full"
+                       {% if q.is_required %}required{% endif %} />
+              {% elif q.question_type == 'textarea' %}
+                <textarea name="question_{{ q.id }}"
+                          class="textarea textarea-bordered w-full"
+                          rows="4"
+                          {% if q.is_required %}required{% endif %}></textarea>
+              {% elif q.question_type == 'dropdown' %}
+                <select name="question_{{ q.id }}"
+                        class="select select-bordered w-full"
+                        {% if q.is_required %}required{% endif %}>
+                  <option value="">-- Select --</option>
+                  {% for opt in q.options %}<option value="{{ opt }}">{{ opt }}</option>{% endfor %}
+                </select>
+              {% elif q.question_type == 'radio' %}
+                <div class="space-y-2">
+                  {% for opt in q.options %}
+                    <label class="label cursor-pointer justify-start gap-3">
+                      <input type="radio"
+                             class="radio radio-sm"
+                             name="question_{{ q.id }}"
+                             value="{{ opt }}"
+                             {% if q.is_required %}required{% endif %}>
+                      <span class="label-text">{{ opt }}</span>
+                    </label>
+                  {% endfor %}
+                </div>
+              {% elif q.question_type == 'checkbox' %}
+                <div class="space-y-2">
+                  {% for opt in q.options %}
+                    <label class="label cursor-pointer justify-start gap-3">
+                      <input type="checkbox"
+                             class="checkbox checkbox-sm"
+                             name="question_{{ q.id }}"
+                             value="{{ opt }}">
+                      <span class="label-text">{{ opt }}</span>
+                    </label>
+                  {% endfor %}
+                </div>
+                {% if q.is_required %}
+                  <label class="label">
+                    <span class="label-text-alt text-warning">At least one option should be selected.</span>
+                  </label>
+                {% endif %}
+              {% elif q.question_type == 'file' %}
+                <input type="file"
+                       name="question_{{ q.id }}"
+                       accept="image/*"
+                       class="file-input file-input-bordered w-full"
+                       {% if q.is_required %}required{% endif %} />
+              {% elif q.question_type == 'licence_upload' %}
+                {% if q.prefilled_licence %}
+                  <div class="flex items-center gap-3 p-2 rounded border border-base-300">
+                    <img src="{{ q.prefilled_licence.image.url }}"
+                         alt="{{ q.prefilled_licence.title }} licence image"
+                         width="64"
+                         height="64"
+                         class="h-16 rounded" />
+                    <span class="text-sm opacity-70">{{ q.prefilled_licence.title }} on file</span>
+                  </div>
+                {% else %}
+                  <input type="file"
+                         name="question_{{ q.id }}"
+                         accept="image/*"
+                         class="file-input file-input-bordered w-full"
+                         {% if q.is_required %}required{% endif %} />
+                {% endif %}
+              {% else %}
+                <input type="text"
+                       name="question_{{ q.id }}"
+                       class="input input-bordered w-full"
+                       {% if q.is_required %}required{% endif %} />
+              {% endif %}
+            </div>
+          {% empty %}
+            <div class="alert alert-info">
+              <span>This form has no questions yet.</span>
+            </div>
+          {% endfor %}
+          <div class="pt-4 border-t">
+            <button type="submit"
+                    class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]">
+              Submit Form
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
-</div>
-
-{% endblock %}
+{% endblock content %}

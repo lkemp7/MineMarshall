@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="max-w-4xl mx-auto space-y-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-4xl text-[#F79327]">Submission Review</h1>
+                <p class="opacity-70 mt-1">
+                    {{ submission.form.title }} —
+                    <strong>{{ submission.user.get_full_name|default:submission.user.email }}</strong>
+                    — {{ submission.submitted_at|date:"Y-m-d H:i" }}
+                </p>
+            </div>
+            <a href="{% url 'metrics' %}" class="btn btn-ghost">← Back to Metrics</a>
+        </div>
+        <div class="card bg-base-200 shadow-sm">
+            <div class="card-body text-sm space-y-1">
+                <div>
+                    <strong>Worker:</strong>
+                    <a href="{% url 'user_profile' submission.user.id %}"
+                       class="link link-hover text-[#F79327]">
+                        {{ submission.user.get_full_name|default:submission.user.email }}
+                    </a>
+                </div>
+                <div>
+                    <strong>Email:</strong> {{ submission.user.email }}
+                </div>
+                <div>
+                    <strong>Submitted:</strong> {{ submission.submitted_at|date:"Y-m-d H:i" }}
+                </div>
+            </div>
+        </div>
+        <div class="card bg-base-200 shadow-sm">
+            <div class="card-body">
+                <h2 class="card-title mb-4">Answers</h2>
+                <div class="space-y-4">
+                    {% for answer in answers %}
+                        <div class="card bg-base-100 p-4">
+                            <div class="flex items-start justify-between mb-2">
+                                <p class="font-semibold">
+                                    {{ forloop.counter }}. {{ answer.question.question_text }}
+                                    {% if answer.question.is_required %}<span class="text-error">*</span>{% endif %}
+                                </p>
+                            </div>
+                            {% if answer.answer_file %}
+                                <img src="{{ answer.answer_file.url }}"
+                                     alt="Submission attachment for question {{ forloop.counter }}"
+                                     width="400"
+                                     height="300"
+                                     class="max-w-xs rounded border border-base-300 mt-2" />
+                            {% elif answer.answer_text %}
+                                <p class="text-sm mt-1 whitespace-pre-wrap">{{ answer.answer_text }}</p>
+                            {% else %}
+                                <p class="text-sm opacity-50 italic mt-1">No answer provided.</p>
+                            {% endif %}
+                        {% empty %}
+                            <div class="alert alert-info">
+                                <span>No answers recorded.</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock content %}

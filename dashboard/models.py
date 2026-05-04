@@ -96,7 +96,7 @@ class Question(models.Model):
         ('checkbox', 'Multiple Choice (Multiple)'),
         ('dropdown', 'Dropdown'),
         ('file', 'File Upload'),
-        ('license_upload', 'Licence Image Upload'),
+        ('licence_upload', 'Licence Image Upload'),
     ]
     
     form = models.ForeignKey(Form, on_delete=models.CASCADE, related_name='questions')
