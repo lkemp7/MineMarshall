@@ -299,3 +299,53 @@ class OnboardingInvite(models.Model):
 
     def __str__(self):
         return f"{self.email} - {self.status}"
+    
+class CredentialNotification(models.Model):
+    REMINDER_BAND_CHOICES = [
+        ("6_month", "6 Months"),
+        ("1_month", "1 Month"),
+        ("2_week", "2 Weeks"),
+        ("1_week", "1 Week"),
+        ("3_day", "3 Days"),
+        ("expired", "Expired"),
+    ]
+
+    credential = models.ForeignKey(
+        Credential,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+    )
+    reminder_band = models.CharField(max_length=20, choices=REMINDER_BAND_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ["credential", "reminder_band"]
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.credential} - {self.reminder_band}"
+    
+class LicenceRenewalRequest(models.Model):
+    credential = models.ForeignKey(
+        Credential,
+        on_delete=models.CASCADE,
+        related_name="renewal_requests",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="licence_renewal_requests",
+    )
+    token = models.CharField(max_length=255, unique=True)
+    reminder_band = models.CharField(max_length=20)
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    is_used = models.BooleanField(default=False)
+    renewal_image = models.ImageField(upload_to="renewal_uploads/", null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.email} - {self.credential.title} - {self.reminder_band}"
+    

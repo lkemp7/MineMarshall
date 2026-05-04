@@ -1,0 +1,24 @@
+{% extends "onboarding_base.html" %}
+
+{% block content %}
+<div class="max-w-xl mx-auto bg-base-100 shadow-lg rounded-xl p-8">
+    <h1 class="text-2xl font-bold mb-4">Renew Driver Licence</h1>
+    <p class="mb-6">
+        Please upload a clear photo of your renewed driver licence.
+    </p>
+
+    <form method="post" enctype="multipart/form-data" class="space-y-4">
+        {% csrf_token %}
+        <div>
+            <label class="label">
+                <span class="label-text">Licence image</span>
+            </label>
+            <input type="file" name="licence_image" accept="image/*" class="file-input file-input-bordered w-full" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-full">
+            Upload and Scan
+        </button>
+    </form>
+</div>
+{% endblock %}

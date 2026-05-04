@@ -1,7 +1,10 @@
 from datetime import datetime
 from django.contrib.auth import get_user_model
 from .models import WorkerProfile
-from .models import Credential
+from .models import Credential, CredentialNotification, LicenceRenewalRequest
+from django.utils import timezone
+import secrets
+from django.conf import settings
 
 
 User = get_user_model()
@@ -117,3 +120,72 @@ def create_or_update_user_from_post(data):
         )
 
     return user
+
+def get_current_licence_reminder_band(credential):
+    if not credential.expiry_date:
+        return None
+
+    today = timezone.localdate()
+    days_until_expiry = (credential.expiry_date - today).days
+
+    # Expired starts the day AFTER expiry date
+    if days_until_expiry < 0:
+        return "expired"
+
+    # Current active band only
+    if 30 < days_until_expiry <= 183:
+        return "6_month"
+    if 14 < days_until_expiry <= 30:
+        return "1_month"
+    if 7 < days_until_expiry <= 14:
+        return "2_week"
+    if 3 < days_until_expiry <= 7:
+        return "1_week"
+    if 0 <= days_until_expiry <= 3:
+        return "3_day"
+
+    return None
+
+def is_driver_licence_credential(credential):
+    if not credential.title:
+        return False
+
+    return credential.title.strip().lower() == "driver licence"
+
+
+def has_notification_been_sent(credential, reminder_band):
+    return CredentialNotification.objects.filter(
+        credential=credential,
+        reminder_band=reminder_band,
+    ).exists()
+
+
+def get_eligible_licence_reminder_band(credential):
+
+    if not is_driver_licence_credential(credential):
+        return None
+
+    reminder_band = get_current_licence_reminder_band(credential)
+    if not reminder_band:
+        return None
+
+    if has_notification_been_sent(credential, reminder_band):
+        return None
+
+    return reminder_band
+
+def create_licence_renewal_request(credential, reminder_band):
+    return LicenceRenewalRequest.objects.create(
+        credential=credential,
+        user=credential.user,
+        token=secrets.token_urlsafe(32),
+        reminder_band=reminder_band,
+    )
+
+
+def build_licence_renewal_url(renewal_request):
+    """
+    Builds the absolute renewal URL for use in reminder emails.
+    """
+    base_url = getattr(settings, "SITE_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+    return f"{base_url}/licence-renewal/{renewal_request.token}/"

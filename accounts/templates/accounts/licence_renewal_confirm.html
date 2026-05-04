@@ -1,0 +1,35 @@
+{% extends "onboarding_base.html" %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto bg-base-100 shadow-lg rounded-xl p-8">
+    <h1 class="text-2xl font-bold mb-6">Confirm Licence Details</h1>
+
+    <div class="grid md:grid-cols-2 gap-6 mb-8">
+        <div>
+            <h2 class="font-semibold mb-3">Current record</h2>
+            <div class="space-y-2">
+                <p><strong>Licence number:</strong> {{ credential.licence_number|default:"-" }}</p>
+                <p><strong>Expiry date:</strong> {{ credential.expiry_date|default:"-" }}</p>
+            </div>
+        </div>
+
+        <div>
+            <h2 class="font-semibold mb-3">New OCR result</h2>
+            <div class="space-y-2">
+                <p><strong>Licence number:</strong> {{ ocr_data.licence_number|default:"-" }}</p>
+                <p><strong>Expiry date:</strong> {{ ocr_data.expiry|default:"-" }}</p>
+            </div>
+        </div>
+    </div>
+
+    <form method="post" class="flex gap-4">
+        {% csrf_token %}
+        <button type="submit" name="reupload" value="1" class="btn btn-outline">
+            Re-upload
+        </button>
+        <button type="submit" name="confirm" value="1" class="btn btn-primary">
+            Confirm
+        </button>
+    </form>
+</div>
+{% endblock %}
