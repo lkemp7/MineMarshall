@@ -109,7 +109,7 @@
       Edit Form
     </button>
     
-    <form method="post" action="{% url 'delete_form' form.pk %}" style="display: inline;">
+    <form method="post" action="{% url 'delete_form' form.pk %}" class="inline-block">
       {% csrf_token %}
       <button type="submit" 
               class="btn btn-sm btn-error text-white"

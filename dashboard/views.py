@@ -1085,10 +1085,6 @@ def project_invite_form(request, invite_id):
         messages.error(request, "No required form has been configured for this role yet.")
         return redirect("my_projects")
 
-    if invite.review_status == "rejected" and not invite.allow_reapply:
-        messages.error(request, "This submission was rejected and is not currently open for reapplication.")
-        return redirect("my_projects")
-
     if invite.status == "pending":
         invite.status = "viewed"
         invite.viewed_at = timezone.now()
@@ -1136,31 +1132,9 @@ def project_invite_form(request, invite_id):
                     answer_file=uploaded_file if uploaded_file else None,
                 )
 
-            additional_credentials = request.user.credentials.filter(required=False, image__isnull=False)
-            for cred in additional_credentials:
-                SubmissionCredentialAttachment.objects.create(
-                    submission=submission,
-                    source_credential=cred,
-                    title=cred.title,
-                    image=cred.image,
-                )
-
             invite.status = "completed"
             invite.completed_at = timezone.now()
-            invite.review_status = "pending_review"
-            invite.reviewed_by = None
-            invite.reviewed_at = None
-            invite.rejection_reason = ""
-            invite.allow_reapply = False
-            invite.save(update_fields=[
-                "status",
-                "completed_at",
-                "review_status",
-                "reviewed_by",
-                "reviewed_at",
-                "rejection_reason",
-                "allow_reapply",
-            ])
+            invite.save(update_fields=["status", "completed_at"])
 
             FormAssignment.objects.filter(form=required_form, user=request.user).update(
                 completed=True,
@@ -1394,3 +1368,16 @@ def view_submission(request, submission_id):
             "linked_invite": linked_invite,
         },
     )
+    
+@login_required
+@require_POST
+def delete_project(request, pk):
+    if not _is_admin_or_manager:
+        return HttpResponseForbidden("Permission Denied")
+
+    project = get_object_or_404(Project, pk=pk)
+    project_title = project.title
+    project.delete()
+    
+    messages.success(request, f'Project "{project_title}" has been deleted.')
+    return redirect("projects")
