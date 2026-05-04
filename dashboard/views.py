@@ -128,7 +128,22 @@ def metrics(request):
         messages.error(request, "You do not have permission to view metrics.")
         return redirect("dashboard")
 
-    projects = Project.objects.all().order_by("title")
+    projects = Project.objects.prefetch_related(
+        Prefetch(
+            "invites",
+            queryset=ProjectInvite.objects.select_related(
+                "user",
+                "project_role",
+                "project_role__required_form",
+                "reviewed_by",
+            ).prefetch_related("user__credentials")
+        ),
+        Prefetch(
+            "roles",
+            queryset=ProjectRole.objects.select_related("required_form")
+        ),
+    ).order_by("title")
+
     selected_project_id = request.GET.get("project")
     selected_role = request.GET.get("role", "").strip()
     sort_by = request.GET.get("sort", "name")
@@ -142,31 +157,75 @@ def metrics(request):
         "not_submitted": 0,
         "submitted": 0,
         "approved": 0,
+        "pending_review": 0,
         "compliance_issues": 0,
+        "rejected": 0,
+        "completion_rate": 0,
     }
 
     project_timeline = None
     role_counts = []
+    project_cards = []
+
+    status_bar = {
+        "not_submitted_percent": 0,
+        "submitted_percent": 0,
+        "approved_percent": 0,
+        "compliance_percent": 0,
+    }
+
+    max_role_count = 0
+
+    colour_classes = [
+        "from-orange-400 to-amber-500",
+        "from-sky-400 to-blue-500",
+        "from-emerald-400 to-green-500",
+        "from-fuchsia-400 to-purple-500",
+        "from-rose-400 to-pink-500",
+        "from-cyan-400 to-teal-500",
+        "from-yellow-400 to-orange-500",
+        "from-indigo-400 to-violet-500",
+    ]
+
+    for index, project in enumerate(projects):
+        invites = list(project.invites.all())
+
+        card_totals = {
+            "total_members": 0,
+            "not_submitted": 0,
+            "submitted": 0,
+            "approved": 0,
+            "pending_review": 0,
+            "compliance_issues": 0,
+            "rejected": 0,
+        }
+
+        for invite in invites:
+            derived_status, has_issue, expired_creds = _project_member_status(invite)
+
+            card_totals["total_members"] += 1
+
+            if derived_status == "Not Submitted":
+                card_totals["not_submitted"] += 1
+            elif derived_status == "Submitted":
+                card_totals["submitted"] += 1
+                card_totals["pending_review"] += 1
+            elif derived_status == "Approved":
+                card_totals["approved"] += 1
+            elif derived_status == "Approved - Compliance Issue":
+                card_totals["approved"] += 1
+                card_totals["compliance_issues"] += 1
+            elif derived_status == "Rejected":
+                card_totals["rejected"] += 1
+
+        project_cards.append({
+            "project": project,
+            "totals": card_totals,
+            "colour_class": colour_classes[index % len(colour_classes)],
+        })
 
     if selected_project_id:
-        selected_project = get_object_or_404(
-            Project.objects.prefetch_related(
-                Prefetch(
-                    "roles",
-                    queryset=ProjectRole.objects.select_related("required_form")
-                ),
-                Prefetch(
-                    "invites",
-                    queryset=ProjectInvite.objects.select_related(
-                        "user",
-                        "project_role",
-                        "project_role__required_form",
-                        "reviewed_by",
-                    ).prefetch_related("user__credentials")
-                ),
-            ),
-            pk=selected_project_id,
-        )
+        selected_project = get_object_or_404(projects, pk=selected_project_id)
 
         role_titles = list(
             selected_project.roles.order_by("title").values_list("title", flat=True)
@@ -210,13 +269,23 @@ def metrics(request):
                 totals["not_submitted"] += 1
             elif row["derived_status"] == "Submitted":
                 totals["submitted"] += 1
+                totals["pending_review"] += 1
             elif row["derived_status"] == "Approved":
                 totals["approved"] += 1
             elif row["derived_status"] == "Approved - Compliance Issue":
                 totals["approved"] += 1
                 totals["compliance_issues"] += 1
-            elif row["has_compliance_issue"]:
-                totals["compliance_issues"] += 1
+            elif row["derived_status"] == "Rejected":
+                totals["rejected"] += 1
+
+        if totals["total_members"] > 0:
+            completed_count = totals["approved"] + totals["compliance_issues"]
+            totals["completion_rate"] = int((completed_count / totals["total_members"]) * 100)
+
+            status_bar["not_submitted_percent"] = int((totals["not_submitted"] / totals["total_members"]) * 100)
+            status_bar["submitted_percent"] = int((totals["submitted"] / totals["total_members"]) * 100)
+            status_bar["approved_percent"] = int((totals["approved"] / totals["total_members"]) * 100)
+            status_bar["compliance_percent"] = int((totals["compliance_issues"] / totals["total_members"]) * 100)
 
         role_counts = []
         for role in selected_project.roles.all():
@@ -225,6 +294,11 @@ def metrics(request):
                 "role": role.title,
                 "count": role_member_count,
             })
+
+        if role_counts:
+            max_role_count = max(item["count"] for item in role_counts) or 1
+            for item in role_counts:
+                item["bar_percent"] = int((item["count"] / max_role_count) * 100) if max_role_count > 0 else 0
 
         if sort_by == "role":
             member_rows.sort(key=lambda x: (x["role"].lower(), x["user"].first_name.lower(), x["user"].last_name.lower()))
@@ -260,6 +334,7 @@ def metrics(request):
 
     context = {
         "projects": projects,
+        "project_cards": project_cards,
         "selected_project": selected_project,
         "selected_project_id": selected_project_id,
         "selected_role": selected_role,
@@ -269,6 +344,8 @@ def metrics(request):
         "totals": totals,
         "role_counts": role_counts,
         "project_timeline": project_timeline,
+        "status_bar": status_bar,
+        "max_role_count": max_role_count,
     }
     return render(request, "metrics.html", context)
 
@@ -284,18 +361,68 @@ def update_project_invite_review_status(request, invite_id):
     )
 
     new_status = request.POST.get("review_status")
+    next_url = (
+        request.POST.get("next")
+        or request.META.get("HTTP_REFERER")
+        or reverse("project_submissions", args=[invite.project_id])
+    )
+
     if new_status not in ["pending_review", "approved", "rejected"]:
         messages.error(request, "Invalid review status.")
-        return redirect(f"{reverse('metrics')}?project={invite.project_id}")
+        return redirect(next_url)
 
-    invite.review_status = new_status
+    if new_status == "approved":
+        invite.review_status = "approved"
+        invite.reviewed_by = request.user
+        invite.reviewed_at = timezone.now()
+        invite.rejection_reason = ""
+        invite.allow_reapply = False
+        invite.save(update_fields=[
+            "review_status",
+            "reviewed_by",
+            "reviewed_at",
+            "rejection_reason",
+            "allow_reapply",
+        ])
+        messages.success(
+            request,
+            f"{invite.user.get_full_name() or invite.user.email} marked as Approved."
+        )
+        return redirect(next_url)
+
+    if new_status == "rejected":
+        rejection_reason = (request.POST.get("rejection_reason") or "").strip()
+        allow_reapply = request.POST.get("allow_reapply") == "on"
+
+        if not rejection_reason:
+            messages.error(request, "A rejection reason is required.")
+            return redirect(next_url)
+
+        invite.review_status = "rejected"
+        invite.reviewed_by = request.user
+        invite.reviewed_at = timezone.now()
+        invite.rejection_reason = rejection_reason
+        invite.allow_reapply = allow_reapply
+        invite.save(update_fields=[
+            "review_status",
+            "reviewed_by",
+            "reviewed_at",
+            "rejection_reason",
+            "allow_reapply",
+        ])
+
+        messages.success(
+            request,
+            f"{invite.user.get_full_name() or invite.user.email} marked as Rejected."
+        )
+        return redirect(next_url)
+
+    invite.review_status = "pending_review"
     invite.reviewed_by = request.user
     invite.reviewed_at = timezone.now()
     invite.save(update_fields=["review_status", "reviewed_by", "reviewed_at"])
-
-    messages.success(request, f"{invite.user.get_full_name() or invite.user.email} marked as {invite.get_review_status_display()}.")
-    return redirect(f"{reverse('metrics')}?project={invite.project_id}")
-
+    messages.success(request, "Review status updated.")
+    return redirect(next_url)
 
 @require_POST
 @login_required
@@ -738,6 +865,7 @@ def update_form(request, pk):
     
     return HttpResponse(status=405)
 
+
 @login_required
 def projects_home(request):
     """Single sidebar entry point: admin/manager sees admin projects, user sees invites."""
@@ -957,6 +1085,10 @@ def project_invite_form(request, invite_id):
         messages.error(request, "No required form has been configured for this role yet.")
         return redirect("my_projects")
 
+    if invite.review_status == "rejected" and not invite.allow_reapply:
+        messages.error(request, "This submission was rejected and is not currently open for reapplication.")
+        return redirect("my_projects")
+
     if invite.status == "pending":
         invite.status = "viewed"
         invite.viewed_at = timezone.now()
@@ -1004,9 +1136,31 @@ def project_invite_form(request, invite_id):
                     answer_file=uploaded_file if uploaded_file else None,
                 )
 
+            additional_credentials = request.user.credentials.filter(required=False, image__isnull=False)
+            for cred in additional_credentials:
+                SubmissionCredentialAttachment.objects.create(
+                    submission=submission,
+                    source_credential=cred,
+                    title=cred.title,
+                    image=cred.image,
+                )
+
             invite.status = "completed"
             invite.completed_at = timezone.now()
-            invite.save(update_fields=["status", "completed_at"])
+            invite.review_status = "pending_review"
+            invite.reviewed_by = None
+            invite.reviewed_at = None
+            invite.rejection_reason = ""
+            invite.allow_reapply = False
+            invite.save(update_fields=[
+                "status",
+                "completed_at",
+                "review_status",
+                "reviewed_by",
+                "reviewed_at",
+                "rejection_reason",
+                "allow_reapply",
+            ])
 
             FormAssignment.objects.filter(form=required_form, user=request.user).update(
                 completed=True,
@@ -1135,32 +1289,108 @@ def onboarding_default_form(request, token):
     return render(request, "forms/onboarding_default_form.html", context)
 
 @login_required
+def project_submissions(request, pk):
+    if not _is_admin_or_manager(request.user):
+        messages.error(request, "You do not have permission to view project submissions.")
+        return redirect("dashboard")
+
+    project = get_object_or_404(
+        Project.objects.prefetch_related(
+            Prefetch(
+                "roles",
+                queryset=ProjectRole.objects.select_related("required_form")
+            ),
+            Prefetch(
+                "invites",
+                queryset=ProjectInvite.objects.select_related(
+                    "user",
+                    "project_role",
+                    "project_role__required_form",
+                    "reviewed_by",
+                ).prefetch_related("user__credentials")
+            ),
+        ),
+        pk=pk,
+    )
+
+    role_sections = []
+
+    for role in project.roles.all().order_by("title"):
+        role_invites = [invite for invite in project.invites.all() if invite.project_role_id == role.id]
+        rows = []
+
+        for invite in role_invites:
+            required_form = role.required_form
+            latest_submission = None
+
+            if required_form:
+                latest_submission = (
+                    FormSubmission.objects
+                    .filter(form=required_form, user=invite.user)
+                    .order_by("-submitted_at")
+                    .first()
+                )
+
+            derived_status, has_issue, expired_creds = _project_member_status(invite)
+
+            rows.append({
+                "invite": invite,
+                "user": invite.user,
+                "submission": latest_submission,
+                "derived_status": derived_status,
+                "has_compliance_issue": has_issue,
+                "expired_credentials": expired_creds,
+            })
+
+        role_sections.append({
+            "role": role,
+            "rows": rows,
+        })
+
+    return render(
+        request,
+        "project_submissions.html",
+        {
+            "project": project,
+            "role_sections": role_sections,
+        },
+    )
+
+
+@login_required
 def view_submission(request, submission_id):
     if not _is_admin_or_manager(request.user):
-        messages.error(request, "You do not have permission to view this submission")
+        messages.error(request, "You do not have permission to view submissions.")
         return redirect("dashboard")
-    
+
     submission = get_object_or_404(
-        FormSubmission.objects.select_related("form", "user")
-        .prefetch_related("answers__question"),
+        FormSubmission.objects.select_related("form", "user").prefetch_related(
+            "answers__question",
+            "attached_credentials",
+        ),
         pk=submission_id,
     )
-    
-    return render(request, "view_submission.html", {
-        "submission": submission,
-        "answers": submission.answers.all().order_by("question__order"),
-        "attached_credentials": submission.attached_credentials.all(),
-    })
-    
-@login_required
-@require_POST
-def delete_project(request, pk):
-    if not _is_admin_or_manager:
-        return HttpResponseForbidden("Permission Denied")
 
-    project = get_object_or_404(Project, pk=pk)
-    project_title = project.title
-    project.delete()
-    
-    messages.success(request, f'Project "{project_title}" has been deleted.')
-    return redirect("projects")
+    linked_invite = (
+        ProjectInvite.objects.select_related(
+            "project",
+            "project_role",
+            "project_role__required_form",
+            "reviewed_by",
+        )
+        .filter(user=submission.user, project_role__required_form=submission.form)
+        .order_by("-invited_at")
+        .first()
+    )
+
+    answers = submission.answers.all().order_by("question__order")
+
+    return render(
+        request,
+        "submission_detail.html",
+        {
+            "submission": submission,
+            "answers": answers,
+            "linked_invite": linked_invite,
+        },
+    )
