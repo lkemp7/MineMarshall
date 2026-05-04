@@ -2,19 +2,26 @@
 {% block content %}
 
 <div class="max-w-7xl mx-auto space-y-6">
-  <div class="flex items-center justify-between">
-    <div>
-      <h1 class="text-4xl text-[#F79327]">{{ project.title }}</h1>
-      <p class="opacity-70 mt-2">
-        {{ project.start_date|date:"Y-m-d" }} →
-        {% if project.end_date %}{{ project.end_date|date:"Y-m-d" }}{% else %}Indefinite{% endif %}
-      </p>
-      {% if project.description %}
-      <p class="mt-3 max-w-4xl">{{ project.description }}</p>
-      {% endif %}
-    </div>
+  <div class="flex items-start justify-between gap-4">
+  <div>
+    <h1 class="text-4xl text-[#F79327]">{{ project.title }}</h1>
+    <p class="opacity-70 mt-2">
+      {{ project.start_date|date:"Y-m-d" }} →
+      {% if project.end_date %}{{ project.end_date|date:"Y-m-d" }}{% else %}Indefinite{% endif %}
+    </p>
+    {% if project.description %}
+    <p class="mt-3 max-w-4xl">{{ project.description }}</p>
+    {% endif %}
+  </div>
+
+  <div class="flex items-center gap-2">
+    <a href="{% url 'project_submissions' project.id %}"
+       class="btn btn-outline border-[#F79327] text-[#F79327] hover:bg-[#F79327] hover:text-white">
+      View Submissions
+    </a>
     <a href="{% url 'projects' %}" class="btn btn-ghost">← Back to Projects</a>
   </div>
+</div>
 
   {% if messages %}
     {% for message in messages %}
@@ -24,7 +31,7 @@
     {% endfor %}
   {% endif %}
 
-  <!-- Add Role -->
+  
   <div class="card bg-base-200 shadow-sm">
     <div class="card-body">
       <h2 class="card-title">Add Role to Project</h2>
@@ -70,7 +77,7 @@
               </p>
             </div>
 
-            <!-- Update required form -->
+            
             <form method="post" action="{% url 'update_project_role_form' project.id role.id %}" class="flex items-center gap-2">
               {% csrf_token %}
               <select name="required_form_id" class="select select-bordered select-sm">
@@ -87,7 +94,7 @@
 
           <div class="divider my-2"></div>
 
-          <!-- Invite users -->
+          
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div>
               <h4 class="font-semibold mb-3">Invite Users to {{ role.title }}</h4>

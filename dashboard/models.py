@@ -257,6 +257,8 @@ class ProjectInvite(models.Model):
         related_name="project_invites_reviewed",
     )
     reviewed_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.TextField(blank=True)
+    allow_reapply = models.BooleanField(default=False)
     invited_at = models.DateTimeField(auto_now_add=True)
     viewed_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)

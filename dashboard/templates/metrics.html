@@ -346,21 +346,12 @@
                       {% endif %}
                     </td>
                     <td>
-                      {% if row.invite.status == 'completed' %}
-                        <div class="flex flex-col gap-2">
-                          <form method="post" action="{% url 'update_project_invite_review_status' row.invite.id %}">
-                            {% csrf_token %}
-                            <input type="hidden" name="review_status" value="approved">
-                            <button type="submit" class="btn btn-xs btn-success text-white w-full">Approve</button>
-                          </form>
-                          <form method="post" action="{% url 'update_project_invite_review_status' row.invite.id %}">
-                            {% csrf_token %}
-                            <input type="hidden" name="review_status" value="rejected">
-                            <button type="submit" class="btn btn-xs btn-error text-white w-full">Reject</button>
-                          </form>
-                        </div>
+                      {% if row.submission %}
+                      <a href="{% url 'view_submission' row.submission.id %}" class="btn btn-xs btn-outline w-full">
+                        View Submission
+                      </a>
                       {% else %}
-                        <span class="opacity-60 text-xs">No submission yet</span>
+                      <span class="opacity-60 text-xs">No submission yet</span>
                       {% endif %}
                     </td>
                   </tr>
