@@ -143,3 +143,4 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = "minemarshal8@gmail.com"
 EMAIL_HOST_PASSWORD = "hcxmtmasoenksemz"
 DEFAULT_FROM_EMAIL = "minemarshal8@gmail.com"
+SITE_BASE_URL = "http://127.0.0.1:8000"
