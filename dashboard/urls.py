@@ -23,6 +23,7 @@ urlpatterns = [
     path('forms/<int:pk>/delete/', views.delete_form, name='delete_form'),
     path('forms/<int:pk>/edit-data/', views.edit_form_data, name='edit_form_data'),
     path('forms/<int:pk>/update/', views.update_form, name='update_form'),
+    path('submissions/<int:submission_id>/', views.view_submission, name='view_submission'),
 
     path('projects/home/', views.projects_home, name='projects_home'),
     path('projects/', views.projects, name='projects'),
@@ -32,6 +33,8 @@ urlpatterns = [
     path('projects/<int:project_pk>/roles/<int:role_pk>/update-form/', views.update_project_role_form, name='update_project_role_form'),
     path('projects/<int:project_pk>/roles/<int:role_pk>/invite/', views.invite_users_to_project_role, name='invite_users_to_project_role'),
     path('project-invites/<int:invite_id>/form/', views.project_invite_form, name='project_invite_form'),
+    path('projects/<int:pk>/delete/', views.delete_project, name='delete_project'),
+    
     path("personnel/induction/", views.start_induction, name="start_induction"),
     path("forms/onboarding-default/<str:token>/", views.onboarding_default_form, name="onboarding_default_form"),
   ]

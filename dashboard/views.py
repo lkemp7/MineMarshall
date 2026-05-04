@@ -643,7 +643,7 @@ def add_question_field(request):
             <option value="checkbox">Multiple Choice (Multiple)</option>
             <option value="dropdown">Dropdown</option>
             <option value="file">File Upload</option>
-            <option value="license_upload">Licence Image Upload</option>
+            <option value="licence_upload">Licence Image Upload</option>
           </select>
         </div>
         
@@ -702,6 +702,9 @@ def add_question_field(request):
 
 @login_required
 def create_form(request):
+    if not _is_admin_or_manager(request.user):
+        return HttpResponseForbidden("User is not admin/manager")
+    
     if request.method == 'POST':
         title = request.POST.get('title')
         description = request.POST.get('description', '')
@@ -731,7 +734,7 @@ def create_form(request):
                 question_type = data.get('type', 'text')
                 options_text = data.get('options', '')
 
-                if question_type == 'license_upload':
+                if question_type == 'licence_upload':
                     preset = data.get('licence_preset', '')
                     custom_label = (data.get('custom_licence_label', '') or '').strip()
 
@@ -751,7 +754,9 @@ def create_form(request):
                 order += 1
 
         messages.success(request, f'Form "{title}" created successfully!')
-        return redirect('my_forms')
+        response = HttpResponse()
+        response['HX-Redirect'] = '/dashboard/forms/mine/'
+        return response
 
     return render(request, 'create_form.html')
 
@@ -826,30 +831,30 @@ def update_form(request, pk):
                         questions_data[uuid] = {}
                     questions_data[uuid][field] = value
         
-    order = 1
-    for uuid, data in questions_data.items():
-        if 'text' in data and data['text']:
-            question_type = data.get('type', 'text')
-            options_text = data.get('options', '')
+        order = 1
+        for uuid, data in questions_data.items():
+            if 'text' in data and data['text']:
+                question_type = data.get('type', 'text')
+                options_text = data.get('options', '')
 
-            if question_type == 'license_upload':
-                preset = data.get('licence_preset', '')
-                custom_label = (data.get('custom_licence_label', '') or '').strip()
+                if question_type == 'licence_upload':
+                    preset = data.get('licence_preset', '')
+                    custom_label = (data.get('custom_licence_label', '') or '').strip()
 
-                if preset == 'additional':
-                    options_text = custom_label or 'Additional Licence'
-                else:
-                    options_text = LICENCE_PRESET_LABELS.get(preset, 'Licence')
+                    if preset == 'additional':
+                        options_text = custom_label or 'Additional Licence'
+                    else:
+                        options_text = LICENCE_PRESET_LABELS.get(preset, 'Licence')
 
-            Question.objects.create(
-                form=form_obj,
-                question_text=data.get('text', ''),
-                question_type=question_type,
-                options_text=options_text,
-                is_required=data.get('required') == 'on',
-                order=order
-            )
-            order += 1
+                Question.objects.create(
+                    form=form_obj,
+                    question_text=data.get('text', ''),
+                    question_type=question_type,
+                    options_text=options_text,
+                    is_required=data.get('required') == 'on',
+                    order=order
+                )
+                order += 1
         
         messages.success(request, f'Form "{form_obj.title}" updated successfully!')
         
@@ -1080,10 +1085,6 @@ def project_invite_form(request, invite_id):
         messages.error(request, "No required form has been configured for this role yet.")
         return redirect("my_projects")
 
-    if invite.review_status == "rejected" and not invite.allow_reapply:
-        messages.error(request, "This submission was rejected and is not currently open for reapplication.")
-        return redirect("my_projects")
-
     if invite.status == "pending":
         invite.status = "viewed"
         invite.viewed_at = timezone.now()
@@ -1105,17 +1106,21 @@ def project_invite_form(request, invite_id):
                 if q.question_type == "checkbox":
                     values = request.POST.getlist(key)
                     answer_value = ", ".join(values)
-                elif q.question_type in ["file", "license_upload"]:
-                    answer_value = q.options_text if q.question_type == "license_upload" else ""
+                elif q.question_type in ["file", "licence_upload"]:
+                    answer_value = q.options_text if q.question_type == "licence_upload" else ""
+                    if q.question_type == "licence_upload" and not uploaded_file:
+                        existing_licence = request.user.credentials.filter(title=q.options_text, image__isnull=False).first()
+                        if existing_licence:
+                            uploaded_file = existing_licence.image
                 else:
                     answer_value = request.POST.get(key, "")
 
                 if q.is_required:
-                    if q.question_type in ["file", "license_upload"] and not uploaded_file:
+                    if q.question_type in ["file", "licence_upload"] and not uploaded_file:
                         messages.error(request, f'Question "{q.question_text}" is required.')
                         submission.delete()
                         return redirect("project_invite_form", invite_id=invite.id)
-                    if q.question_type not in ["file", "license_upload"] and not answer_value:
+                    if q.question_type not in ["file", "licence_upload"] and not answer_value:
                         messages.error(request, f'Question "{q.question_text}" is required.')
                         submission.delete()
                         return redirect("project_invite_form", invite_id=invite.id)
@@ -1127,31 +1132,9 @@ def project_invite_form(request, invite_id):
                     answer_file=uploaded_file if uploaded_file else None,
                 )
 
-            additional_credentials = request.user.credentials.filter(required=False, image__isnull=False)
-            for cred in additional_credentials:
-                SubmissionCredentialAttachment.objects.create(
-                    submission=submission,
-                    source_credential=cred,
-                    title=cred.title,
-                    image=cred.image,
-                )
-
             invite.status = "completed"
             invite.completed_at = timezone.now()
-            invite.review_status = "pending_review"
-            invite.reviewed_by = None
-            invite.reviewed_at = None
-            invite.rejection_reason = ""
-            invite.allow_reapply = False
-            invite.save(update_fields=[
-                "status",
-                "completed_at",
-                "review_status",
-                "reviewed_by",
-                "reviewed_at",
-                "rejection_reason",
-                "allow_reapply",
-            ])
+            invite.save(update_fields=["status", "completed_at"])
 
             FormAssignment.objects.filter(form=required_form, user=request.user).update(
                 completed=True,
@@ -1160,16 +1143,20 @@ def project_invite_form(request, invite_id):
 
         messages.success(request, f'Form "{required_form.title}" submitted successfully.')
         return redirect("my_projects")
-
-    return render(
+                                                                              
+    for q in questions:
+        if q.question_type == 'licence_upload':                                                             
+            q.prefilled_licence = request.user.credentials.filter(title=q.options_text, image__isnull=False).first()
+                                                                                                            
+    return render(  
         request,
         "project_invite_form.html",
-        {
+        {                                                                                                   
             "invite": invite,
-            "form_obj": required_form,
-            "questions": questions,
+            "form_obj": required_form,                                                                      
+            "questions": questions,                                                     
         },
-    )
+    ) 
 
 @login_required
 def start_induction(request):
@@ -1381,3 +1368,16 @@ def view_submission(request, submission_id):
             "linked_invite": linked_invite,
         },
     )
+    
+@login_required
+@require_POST
+def delete_project(request, pk):
+    if not _is_admin_or_manager:
+        return HttpResponseForbidden("Permission Denied")
+
+    project = get_object_or_404(Project, pk=pk)
+    project_title = project.title
+    project.delete()
+    
+    messages.success(request, f'Project "{project_title}" has been deleted.')
+    return redirect("projects")
