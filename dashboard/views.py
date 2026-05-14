@@ -884,15 +884,37 @@ def projects(request):
     if request.method == "POST":
         title = (request.POST.get("title") or "").strip()
         description = (request.POST.get("description") or "").strip()
-        start_date = request.POST.get("start_date")
-        end_date = request.POST.get("end_date") or None
+        start_date_raw = (request.POST.get("start_date") or "").strip()
+        end_date_raw = (request.POST.get("end_date") or "").strip()
 
         if not title:
             messages.error(request, "Project title is required.")
             return redirect("projects")
 
-        if not start_date:
+        if not start_date_raw:
             messages.error(request, "Project start date is required.")
+            return redirect("projects")
+
+        try:
+            start_date = date.fromisoformat(start_date_raw)
+        except ValueError:
+            messages.error(request, "Please enter a valid project start date.")
+            return redirect("projects")
+
+        end_date = None
+        if end_date_raw:
+            try:
+                end_date = date.fromisoformat(end_date_raw)
+            except ValueError:
+                messages.error(request, "Please enter a valid project end date.")
+                return redirect("projects")
+
+        if start_date.year < 1900 or start_date.year > 2099:
+            messages.error(request, "Project start date must be between 1900 and 2099.")
+            return redirect("projects")
+
+        if end_date and (end_date.year < 1900 or end_date.year > 2099):
+            messages.error(request, "Project end date must be between 1900 and 2099.")
             return redirect("projects")
 
         if end_date and end_date < start_date:
