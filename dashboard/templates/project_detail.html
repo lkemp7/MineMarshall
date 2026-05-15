@@ -14,12 +14,30 @@
       {% endif %}
     </div>
 
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        class="btn btn-outline border-[#F79327] text-[#F79327] bg-white hover:bg-[#F79327] hover:text-white"
+        onclick="document.getElementById('projectDocumentsModal').showModal()">
+        Project Documents
+      </button>
+
+      <button
+        type="button"
+        class="btn btn-outline border-[#F79327] text-[#F79327] bg-white hover:bg-[#F79327] hover:text-white"
+        onclick="document.getElementById('addRoleModal').showModal()">
+        Add Role
+      </button>
+
       <a href="{% url 'project_submissions' project.id %}"
-         class="btn btn-outline border-[#F79327] text-[#F79327] hover:bg-[#F79327] hover:text-white">
+         class="btn btn-outline border-[#F79327] text-[#F79327] bg-white hover:bg-[#F79327] hover:text-white">
         View Submissions
       </a>
-      <a href="{% url 'projects' %}" class="btn btn-ghost">← Back to Projects</a>
+
+      <a href="{% url 'projects' %}"
+         class="btn btn-outline border-[#F79327] text-[#F79327] bg-white hover:bg-[#F79327] hover:text-white">
+        ← Back to Projects
+      </a>
     </div>
   </div>
 
@@ -31,42 +49,27 @@
     {% endfor %}
   {% endif %}
 
-  <div class="card bg-base-200 shadow-sm">
-    <div class="card-body">
-      <h2 class="card-title">Add Role to Project</h2>
-      <form method="post" action="{% url 'add_project_role' project.id %}" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-        {% csrf_token %}
-        <div class="form-control">
-          <label class="label"><span class="label-text">Role Title *</span></label>
-          <input type="text" name="role_title" class="input input-bordered" placeholder="e.g. Driller, Supervisor" required />
-        </div>
-
-        <div class="form-control">
-          <label class="label"><span class="label-text">Required Form</span></label>
-          <select name="required_form_id" class="select select-bordered">
-            <option value="">-- No form selected yet --</option>
-            {% for f in forms %}
-              <option value="{{ f.id }}">{{ f.title }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <button type="submit" class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]">
-          Add Role
-        </button>
-      </form>
-    </div>
-  </div>
-
   {% if project.roles.all %}
     <div class="space-y-6">
       {% for role in project.roles.all %}
-      <div class="card bg-base-200 shadow-sm">
+      <div class="card bg-base-200 shadow-sm border-l-8
+        {% if forloop.counter0|divisibleby:4 %}
+          border-l-[#F79327]
+        {% elif forloop.counter0|add:'3'|divisibleby:4 %}
+          border-l-sky-500
+        {% elif forloop.counter0|add:'2'|divisibleby:4 %}
+          border-l-emerald-500
+        {% else %}
+          border-l-violet-500
+        {% endif %}">
         <div class="card-body">
           <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div>
-              <h3 class="text-xl font-semibold">{{ role.title }}</h3>
-              <p class="opacity-70 text-sm">
+              <div class="flex items-center gap-3">
+                <h3 class="text-xl font-semibold">{{ role.title }}</h3>
+                <span class="badge badge-neutral">{{ role.invites.count }} invite{{ role.invites.count|pluralize }}</span>
+              </div>
+              <p class="opacity-70 text-sm mt-1">
                 Required form:
                 {% if role.required_form %}
                   <span class="font-semibold">{{ role.required_form.title }}</span>
@@ -88,6 +91,57 @@
               </select>
               <button type="submit" class="btn btn-sm">Save Form</button>
             </form>
+          </div>
+
+          <div class="mt-5">
+            <h4 class="font-semibold mb-3">Approval Documents for {{ role.title }}</h4>
+
+            <form method="post" action="{% url 'add_role_approval_document' project.id role.id %}" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end mb-4">
+              {% csrf_token %}
+              <div class="form-control">
+                <label class="label"><span class="label-text">Document Title</span></label>
+                <input type="text" name="title" class="input input-bordered input-sm" placeholder="e.g. Operator Contract" required />
+              </div>
+
+              <div class="form-control">
+                <label class="label"><span class="label-text">PDF File</span></label>
+                <input type="file" name="document" class="file-input file-input-bordered file-input-sm" accept=".pdf" required />
+              </div>
+
+              <button type="submit" class="btn btn-sm">Add Role Document</button>
+            </form>
+
+            {% with role_docs=role.approval_documents.all %}
+              {% if role_docs %}
+                <div class="overflow-x-auto mb-4">
+                  <table class="table table-sm">
+                    <thead>
+                      <tr>
+                        <th>Title</th>
+                        <th>File</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for doc in role_docs %}
+                        <tr>
+                          <td>{{ doc.title }}</td>
+                          <td><a href="{{ doc.document.url }}" target="_blank" class="link link-primary">Open PDF</a></td>
+                          <td>
+                            <form method="post" action="{% url 'delete_approval_document' doc.id %}">
+                              {% csrf_token %}
+                              <button type="submit" class="btn btn-xs btn-error text-white">Delete</button>
+                            </form>
+                          </td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              {% else %}
+                <div class="opacity-70 text-sm mb-4">No role-specific documents yet.</div>
+              {% endif %}
+            {% endwith %}
           </div>
 
           <div class="divider my-2"></div>
@@ -170,15 +224,109 @@
       {% endfor %}
     </div>
   {% else %}
-  <div class="alert alert-info">
-    <span>No roles added yet. Add a role above, choose a required form, then invite users.</span>
-  </div>
+    <div class="alert alert-info">
+      <span>No roles added yet. Use the Add Role button above to create one.</span>
+    </div>
   {% endif %}
 
   <div class="flex justify-end mt-6">
     <button class="btn btn-error text-white"
             onclick="document.getElementById('deleteProjectModal').showModal()">Delete Project</button>
   </div>
+
+  <dialog id="projectDocumentsModal" class="modal">
+    <div class="modal-box max-w-4xl">
+      <h3 class="font-bold text-lg mb-4">Project Approval Documents</h3>
+
+      <form method="post" action="{% url 'add_project_approval_document' project.id %}" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end mb-4">
+        {% csrf_token %}
+        <div class="form-control">
+          <label class="label"><span class="label-text">Document Title</span></label>
+          <input type="text" name="title" class="input input-bordered" placeholder="e.g. Site Contract" required />
+        </div>
+
+        <div class="form-control">
+          <label class="label"><span class="label-text">PDF File</span></label>
+          <input type="file" name="document" class="file-input file-input-bordered" accept=".pdf" required />
+        </div>
+
+        <button type="submit" class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]">
+          Add Project Document
+        </button>
+      </form>
+
+      {% if project_documents %}
+        <div class="overflow-x-auto">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>File</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for doc in project_documents %}
+                <tr>
+                  <td>{{ doc.title }}</td>
+                  <td><a href="{{ doc.document.url }}" target="_blank" class="link link-primary">Open PDF</a></td>
+                  <td>
+                    <form method="post" action="{% url 'delete_approval_document' doc.id %}">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-xs btn-error text-white">Delete</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="opacity-70 text-sm">No project-wide approval documents yet.</div>
+      {% endif %}
+
+      <div class="modal-action">
+        <button type="button" class="btn" onclick="document.getElementById('projectDocumentsModal').close()">Close</button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+
+  <dialog id="addRoleModal" class="modal">
+    <div class="modal-box max-w-2xl">
+      <h3 class="font-bold text-lg mb-4">Add Role to Project</h3>
+
+      <form method="post" action="{% url 'add_project_role' project.id %}" class="space-y-4">
+        {% csrf_token %}
+        <div class="form-control">
+          <label class="label"><span class="label-text">Role Title *</span></label>
+          <input type="text" name="role_title" class="input input-bordered" placeholder="e.g. Driller, Supervisor" required />
+        </div>
+
+        <div class="form-control">
+          <label class="label"><span class="label-text">Required Form</span></label>
+          <select name="required_form_id" class="select select-bordered">
+            <option value="">-- No form selected yet --</option>
+            {% for f in forms %}
+              <option value="{{ f.id }}">{{ f.title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="modal-action">
+          <button type="button" class="btn" onclick="document.getElementById('addRoleModal').close()">Cancel</button>
+          <button type="submit" class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]">
+            Add Role
+          </button>
+        </div>
+      </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
 
   <dialog id="deleteProjectModal" class="modal">
     <div class="modal-box">
@@ -189,8 +337,7 @@
         associated with this project. This action cannot be undone.
       </p>
       <div class="modal-action">
-        <button class="btn"
-                onclick="document.getElementById('deleteProjectModal').close()">Cancel</button>
+        <button class="btn" onclick="document.getElementById('deleteProjectModal').close()">Cancel</button>
         <form method="post" action="{% url 'delete_project' project.pk %}">
           {% csrf_token %}
           <button type="submit" class="btn btn-error text-white">Yes, Delete Project</button>

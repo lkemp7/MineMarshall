@@ -1,4 +1,5 @@
 from django.contrib.auth.decorators import login_required
+from django.db import models
 from accounts.models import CustomUser
 from django.contrib import messages
 from .models import Form, Question
@@ -12,7 +13,7 @@ from django.template.loader import render_to_string
 import uuid
 from django.db import transaction
 from django.db.models import Prefetch
-from .models import FormAssignment, FormSubmission, Answer, Project, ProjectRole, ProjectInvite
+from .models import FormAssignment, FormSubmission, Answer, Project, ProjectRole, ProjectInvite, ApprovalDocument
 from .models import Form, Question, WorkerProfile, Credential, FormDraft, SubmissionCredentialAttachment,LICENCE_PRESETS,LICENCE_PRESET_LABELS
 from django.db.models import Count
 from django.utils import timezone
@@ -51,21 +52,28 @@ def dashboard(request):
 
 @login_required
 def my_forms(request):
-    # Only show forms created by the logged-in user
+    if not _is_admin_or_manager(request.user):
+        messages.error(request, "You do not have permission to view forms.")
+        return redirect("dashboard")
+
     forms = Form.objects.filter(created_by=request.user).order_by("-created_at")
     return render(request, "my_forms.html", {"forms": forms})
 
 
 @login_required
 def view_form(request, pk):
+    if not _is_admin_or_manager(request.user):
+        messages.error(request, "You do not have permission to view forms.")
+        return redirect("dashboard")
+
     form_obj = get_object_or_404(Form, pk=pk, created_by=request.user)
-    questions = form_obj.questions.all().order_by('order')
-    
+    questions = form_obj.questions.all().order_by("order")
+
     context = {
-        'form': form_obj,
-        'questions': questions,
+        "form": form_obj,
+        "questions": questions,
     }
-    return render(request, 'view_form.html', context)
+    return render(request, "view_form.html", context)
 
 
 @login_required
@@ -82,6 +90,10 @@ def user_profile(request, user_id):
     can_edit_credentials = (
         request.user.role in ["admin", "manager"] or request.user.pk == user_obj.pk
     )
+    can_edit_profile = (
+        request.user.role in ["admin", "manager"] or request.user.pk == user_obj.pk
+    )
+    is_self_profile = request.user.pk == user_obj.pk
 
     return render(
         request,
@@ -90,6 +102,8 @@ def user_profile(request, user_id):
             "user_obj": user_obj,
             "licence_presets": LICENCE_PRESETS,
             "can_edit_credentials": can_edit_credentials,
+            "can_edit_profile": can_edit_profile,
+            "is_self_profile": is_self_profile,
         },
     )
 
@@ -122,6 +136,16 @@ def _project_member_status(invite):
 
     return "Submitted", has_issue, expired_creds
 
+def _get_invite_approval_documents(invite):
+    return ApprovalDocument.objects.filter(
+        project=invite.project,
+        is_active=True,
+    ).filter(
+        models.Q(scope="project") |
+        models.Q(scope="role", role=invite.project_role) |
+        models.Q(scope="user", target_user=invite.user)
+    ).order_by("scope", "title")
+    
 @login_required
 def metrics(request):
     if not _is_admin_or_manager(request.user):
@@ -491,38 +515,8 @@ def add_user(request):
 
 @login_required
 def edit_user_profile(request, pk):
-    if request.user.role not in ['admin', 'manager']:
-        messages.error(request, 'You do not have permission to edit profiles.')
-        return redirect('personnel')
-    
-    user_obj = get_object_or_404(CustomUser, pk=pk)
-    
-    if request.method == 'POST':
-        user_obj.first_name = request.POST.get('first_name')
-        user_obj.last_name = request.POST.get('last_name')
-        user_obj.email = request.POST.get('email')
-        user_obj.phone_number = request.POST.get('phone_number')
-        user_obj.save()
-        
-        # Update or create worker profile
-        if hasattr(user_obj, 'worker_profile'):
-            profile = user_obj.worker_profile
-        else:
-            profile = WorkerProfile.objects.create(user=user_obj)
-        
-        dob = request.POST.get('dob')
-        profile.dob = dob if dob else None
-        profile.role = request.POST.get('worker_role')
-        profile.project = request.POST.get('project')
-        profile.employer = request.POST.get('employer')
-        profile.emergency_contact_name = request.POST.get('emergency_contact_name')
-        profile.emergency_contact_mobile = request.POST.get('emergency_contact_mobile')
-        profile.save()
-        
-        messages.success(request, f'Profile updated for {user_obj.first_name} {user_obj.last_name}')
-        return redirect('user_profile', user_id=pk)
-    
-    return redirect('user_profile', user_id=pk)
+    return redirect('user_profile', user_id=request.user.pk)
+
 
 @login_required
 def save_credential(request, pk):
@@ -937,7 +931,6 @@ def projects(request):
 
 @login_required
 def project_detail(request, pk):
-    """Admin/Manager page to manage project roles, forms, and invites."""
     if not _is_admin_or_manager(request.user):
         messages.error(request, "You do not have permission to manage projects.")
         return redirect("dashboard")
@@ -946,12 +939,15 @@ def project_detail(request, pk):
         Project.objects.prefetch_related(
             Prefetch("roles", queryset=ProjectRole.objects.select_related("required_form")),
             Prefetch("invites", queryset=ProjectInvite.objects.select_related("user", "project_role", "project_role__required_form")),
+            "approval_documents",
         ),
         pk=pk,
     )
 
     forms = Form.objects.filter(is_active=True).order_by("title")
     users = CustomUser.objects.all().order_by("first_name", "last_name", "email")
+
+    project_documents = project.approval_documents.filter(scope="project", is_active=True)
 
     return render(
         request,
@@ -960,6 +956,7 @@ def project_detail(request, pk):
             "project": project,
             "forms": forms,
             "users": users,
+            "project_documents": project_documents,
         },
     )
 
@@ -1081,17 +1078,97 @@ def invite_users_to_project_role(request, project_pk, role_pk):
     messages.success(request, f"{' and '.join(msg_parts)} for role {role_obj.title}.")
     return redirect("project_detail", pk=project_pk)
 
+@login_required
+@require_POST
+def add_project_approval_document(request, pk):
+    if not _is_admin_or_manager(request.user):
+        return HttpResponseForbidden("Permission denied")
+
+    project = get_object_or_404(Project, pk=pk)
+    title = (request.POST.get("title") or "").strip()
+    uploaded_file = request.FILES.get("document")
+
+    if not title or not uploaded_file:
+        messages.error(request, "Document title and file are required.")
+        return redirect("project_detail", pk=project.pk)
+
+    if not uploaded_file.name.lower().endswith(".pdf"):
+        messages.error(request, "Only PDF files are supported.")
+        return redirect("project_detail", pk=project.pk)
+
+    ApprovalDocument.objects.create(
+        project=project,
+        scope="project",
+        title=title,
+        document=uploaded_file,
+        uploaded_by=request.user,
+    )
+
+    messages.success(request, "Project approval document added.")
+    return redirect("project_detail", pk=project.pk)
+
+
+@login_required
+@require_POST
+def add_role_approval_document(request, project_pk, role_pk):
+    if not _is_admin_or_manager(request.user):
+        return HttpResponseForbidden("Permission denied")
+
+    role = get_object_or_404(ProjectRole, pk=role_pk, project_id=project_pk)
+    title = (request.POST.get("title") or "").strip()
+    uploaded_file = request.FILES.get("document")
+
+    if not title or not uploaded_file:
+        messages.error(request, "Document title and file are required.")
+        return redirect("project_detail", pk=project_pk)
+
+    if not uploaded_file.name.lower().endswith(".pdf"):
+        messages.error(request, "Only PDF files are supported.")
+        return redirect("project_detail", pk=project_pk)
+
+    ApprovalDocument.objects.create(
+        project=role.project,
+        role=role,
+        scope="role",
+        title=title,
+        document=uploaded_file,
+        uploaded_by=request.user,
+    )
+
+    messages.success(request, f'Approval document added for role "{role.title}".')
+    return redirect("project_detail", pk=project_pk)
+
+
+@login_required
+@require_POST
+def delete_approval_document(request, doc_id):
+    if not _is_admin_or_manager(request.user):
+        return HttpResponseForbidden("Permission denied")
+
+    document = get_object_or_404(ApprovalDocument, pk=doc_id)
+    project_id = document.project_id
+    document.delete()
+
+    messages.success(request, "Approval document deleted.")
+    return redirect("project_detail", pk=project_id)
 
 @login_required
 def my_projects(request):
-    """User-facing invites list."""
     invites = (
         ProjectInvite.objects
         .filter(user=request.user)
         .select_related("project", "project_role", "project_role__required_form")
         .order_by("-invited_at")
     )
-    return render(request, "my_projects.html", {"invites": invites})
+
+    invite_rows = []
+    for invite in invites:
+        invite_rows.append({
+            "invite": invite,
+            "approval_documents": _get_invite_approval_documents(invite) if invite.review_status == "approved" else [],
+        })
+
+    return render(request, "my_projects.html", {"invite_rows": invite_rows})
 
 
 @login_required
