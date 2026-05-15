@@ -134,13 +134,41 @@ class FormAssignment(models.Model):
         return f"{self.form.title} → {self.user.email}"
 
 class FormSubmission(models.Model):
-    form = models.ForeignKey(Form, on_delete=models.CASCADE, related_name='submissions')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='form_submissions')
+    form = models.ForeignKey(Form, 
+                             on_delete=models.CASCADE, 
+                             related_name='submissions',
+                             )
+    
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name='form_submissions'
+        )
+    
     submitted_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
         return f"{self.user.email} - {self.form.title} - {self.submitted_at}"
+    
 
+class FormDraft(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete = models.CASCADE,
+        related_name="form_drafts",        
+    )
+    
+    invite = models.ForeignKey(
+        "ProjectInvite",
+        on_delete=models.CASCADE,
+        related_name="form_drafts"
+    )
+    
+    answers_json = models.JSONField(default=dict)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ("user", "invite")
 class Answer(models.Model):
     submission = models.ForeignKey(FormSubmission, on_delete=models.CASCADE, related_name='answers')
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
