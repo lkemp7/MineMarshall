@@ -14,7 +14,7 @@ import uuid
 from django.db import transaction
 from django.db.models import Prefetch
 from .models import FormAssignment, FormSubmission, Answer, Project, ProjectRole, ProjectInvite, ApprovalDocument
-from .models import Form, Question, WorkerProfile, Credential, SubmissionCredentialAttachment,LICENCE_PRESETS,LICENCE_PRESET_LABELS
+from .models import Form, Question, WorkerProfile, Credential, FormDraft, SubmissionCredentialAttachment,LICENCE_PRESETS,LICENCE_PRESET_LABELS
 from django.db.models import Count
 from django.utils import timezone
 from datetime import date
@@ -1243,9 +1243,14 @@ def project_invite_form(request, invite_id):
         messages.success(request, f'Form "{required_form.title}" submitted successfully.')
         return redirect("my_projects")
                                                                               
+    draft = FormDraft.objects.filter(user=request.user, invite=invite).first()
+    draft_answers = draft.answers_json if draft else {}
+    
     for q in questions:
+        q.draft_value = draft_answers.get(f"question_{q.id}", "")
         if q.question_type == 'licence_upload':                                                             
             q.prefilled_licence = request.user.credentials.filter(title=q.options_text, image__isnull=False).first()
+    
                                                                                                             
     return render(  
         request,
@@ -1253,9 +1258,38 @@ def project_invite_form(request, invite_id):
         {                                                                                                   
             "invite": invite,
             "form_obj": required_form,                                                                      
-            "questions": questions,                                                     
+            "questions": questions,
+            "draft_answers": draft_answers                                                
         },
     ) 
+    
+@login_required
+@require_POST
+def save_form_draft(request, invite_id):
+    invite = get_object_or_404(
+        ProjectInvite,
+        pk=invite_id,
+        user=request.user,
+    )
+    
+    question_id = request.POST.get("question_id")
+    value = request.POST.getlist("value")
+    
+    if not question_id:
+        return HttpResponse(status=400)
+    
+    if len(value) == 1:
+        value = value[0]
+        
+    draft, _ = FormDraft.objects.get_or_create(
+        user=request.user,
+        invite=invite,
+    )
+    
+    draft.answers_json[question_id] = value
+    draft.save(update_fields=["answers_json", "updated_at"])
+    
+    return HttpResponse(status=204)
 
 @login_required
 def start_induction(request):

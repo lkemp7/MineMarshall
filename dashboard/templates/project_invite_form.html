@@ -31,69 +31,91 @@
                   {% if q.is_required %}<span class="text-error">*</span>{% endif %}
                 </span>
               </label>
+
               {% if q.question_type == 'text' %}
                 <input type="text"
-                       name="question_{{ q.id }}"
-                       class="input input-bordered w-full"
-                       {% if q.is_required %}required{% endif %} />
+                      name="question_{{ q.id }}"
+                      class="input input-bordered w-full"
+                      value="{{ q.draft_value }}"
+                      {% if q.is_required %}required{% endif %} />
+
               {% elif q.question_type == 'email' %}
                 <input type="email"
-                       name="question_{{ q.id }}"
-                       class="input input-bordered w-full"
-                       {% if q.is_required %}required{% endif %} />
+                      name="question_{{ q.id }}"
+                      class="input input-bordered w-full"
+                      value="{{ q.draft_value }}"
+                      {% if q.is_required %}required{% endif %} />
+
               {% elif q.question_type == 'phone' %}
                 <input type="text"
-                       name="question_{{ q.id }}"
-                       class="input input-bordered w-full"
-                       {% if q.is_required %}required{% endif %} />
+                      name="question_{{ q.id }}"
+                      class="input input-bordered w-full"
+                      value="{{ q.draft_value }}"
+                      {% if q.is_required %}required{% endif %} />
+
               {% elif q.question_type == 'number' %}
                 <input type="number"
-                       name="question_{{ q.id }}"
-                       class="input input-bordered w-full"
-                       {% if q.is_required %}required{% endif %} />
+                      name="question_{{ q.id }}"
+                      class="input input-bordered w-full"
+                      value="{{ q.draft_value }}"
+                      {% if q.is_required %}required{% endif %} />
+
               {% elif q.question_type == 'date' %}
                 <input type="date"
-                       name="question_{{ q.id }}"
-                       class="input input-bordered w-full"
-                       {% if q.is_required %}required{% endif %} />
+                      name="question_{{ q.id }}"
+                      class="input input-bordered w-full"
+                      value="{{ q.draft_value }}"
+                      {% if q.is_required %}required{% endif %} />
+
               {% elif q.question_type == 'time' %}
                 <input type="time"
-                       name="question_{{ q.id }}"
-                       class="input input-bordered w-full"
-                       {% if q.is_required %}required{% endif %} />
+                      name="question_{{ q.id }}"
+                      class="input input-bordered w-full"
+                      value="{{ q.draft_value }}"
+                      {% if q.is_required %}required{% endif %} />
+
               {% elif q.question_type == 'textarea' %}
                 <textarea name="question_{{ q.id }}"
                           class="textarea textarea-bordered w-full"
                           rows="4"
-                          {% if q.is_required %}required{% endif %}></textarea>
+                          {% if q.is_required %}required{% endif %}>{{ q.draft_value }}</textarea>
+
               {% elif q.question_type == 'dropdown' %}
                 <select name="question_{{ q.id }}"
                         class="select select-bordered w-full"
                         {% if q.is_required %}required{% endif %}>
                   <option value="">-- Select --</option>
-                  {% for opt in q.options %}<option value="{{ opt }}">{{ opt }}</option>{% endfor %}
+                  {% for opt in q.options %}
+                    <option value="{{ opt }}" {% if opt == q.draft_value %}selected{% endif %}>
+                      {{ opt }}
+                    </option>
+                  {% endfor %}
                 </select>
+
               {% elif q.question_type == 'radio' %}
                 <div class="space-y-2">
                   {% for opt in q.options %}
                     <label class="label cursor-pointer justify-start gap-3">
                       <input type="radio"
-                             class="radio radio-sm"
-                             name="question_{{ q.id }}"
-                             value="{{ opt }}"
-                             {% if q.is_required %}required{% endif %}>
+                            class="radio radio-sm"
+                            name="question_{{ q.id }}"
+                            value="{{ opt }}"
+                            {% if opt == q.draft_value %}checked{% endif %}
+                            {% if q.is_required %}required{% endif %}>
                       <span class="label-text">{{ opt }}</span>
                     </label>
                   {% endfor %}
                 </div>
+
               {% elif q.question_type == 'checkbox' %}
                 <div class="space-y-2">
                   {% for opt in q.options %}
                     <label class="label cursor-pointer justify-start gap-3">
                       <input type="checkbox"
-                             class="checkbox checkbox-sm"
-                             name="question_{{ q.id }}"
-                             value="{{ opt }}">
+                            class="checkbox checkbox-sm"
+                            name="question_{{ q.id }}"
+                            value="{{ opt }}"
+                            {% if opt in q.draft_value %}checked{% endif %}>
                       <span class="label-text">{{ opt }}</span>
                     </label>
                   {% endfor %}
@@ -103,35 +125,38 @@
                     <span class="label-text-alt text-warning">At least one option should be selected.</span>
                   </label>
                 {% endif %}
+
               {% elif q.question_type == 'file' %}
                 <input type="file"
-                       name="question_{{ q.id }}"
-                       accept="image/*"
-                       class="file-input file-input-bordered w-full"
-                       {% if q.is_required %}required{% endif %} />
+                      name="question_{{ q.id }}"
+                      accept="image/*"
+                      class="file-input file-input-bordered w-full"
+                      {% if q.is_required %}required{% endif %} />
+
               {% elif q.question_type == 'licence_upload' %}
                 {% if q.prefilled_licence %}
                   <div class="flex items-center gap-3 p-2 rounded border border-base-300">
                     <img src="{{ q.prefilled_licence.image.url }}"
-                         alt="{{ q.prefilled_licence.title }} licence image"
-                         width="64"
-                         height="64"
-                         class="h-16 rounded" />
+                        alt="{{ q.prefilled_licence.title }} licence image"
+                        width="64" height="64" class="h-16 rounded" />
                     <span class="text-sm opacity-70">{{ q.prefilled_licence.title }} on file</span>
                   </div>
                 {% else %}
                   <input type="file"
-                         name="question_{{ q.id }}"
-                         accept="image/*"
-                         class="file-input file-input-bordered w-full"
-                         {% if q.is_required %}required{% endif %} />
+                        name="question_{{ q.id }}"
+                        accept="image/*"
+                        class="file-input file-input-bordered w-full"
+                        {% if q.is_required %}required{% endif %} />
                 {% endif %}
+
               {% else %}
                 <input type="text"
-                       name="question_{{ q.id }}"
-                       class="input input-bordered w-full"
-                       {% if q.is_required %}required{% endif %} />
+                      name="question_{{ q.id }}"
+                      class="input input-bordered w-full"
+                      value="{{ q.draft_value }}"
+                      {% if q.is_required %}required{% endif %} />
               {% endif %}
+
             </div>
           {% empty %}
             <div class="alert alert-info">
@@ -148,4 +173,53 @@
       </div>
     </div>
   </div>
+  <script>
+  (function () {
+    const form = document.querySelector('form[enctype="multipart/form-data"]');
+    const draftUrl = "{% url 'save_form_draft' invite.id %}";
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    function saveDraft(questionId, value) {
+      const body = new FormData();
+      body.append('csrfmiddlewaretoken', csrfToken);
+      body.append('question_id', questionId);
+
+      if (Array.isArray(value)) {
+        value.forEach(v => body.append('value', v));
+      } else {
+        body.append('value', value);
+      }
+
+      fetch(draftUrl, { method: 'POST', body });
+    }
+
+    form.addEventListener('blur', function (e) {
+      const el = e.target;
+      const textTypes = ['text', 'email', 'number', 'date', 'time', 'tel'];
+      const tag = el.tagName.toLowerCase();
+      const inputType = el.type ? el.type.toLowerCase() : '';
+
+      if (tag === 'textarea' || (tag === 'input' && textTypes.includes(inputType))) {
+        if (el.name && el.name.startsWith('question_')) {
+          saveDraft(el.name, el.value);
+        }
+      }
+    }, true);
+
+    form.addEventListener('change', function (e) {
+      const el = e.target;
+      if (!el.name || !el.name.startsWith('question_')) return;
+      if (el.type === 'file') return; // can't store files as JSON
+
+      if (el.type === 'checkbox') {
+        const checked = Array.from(
+          form.querySelectorAll(`input[name="${el.name}"]:checked`)
+        ).map(cb => cb.value);
+        saveDraft(el.name, checked);
+      } else {
+        saveDraft(el.name, el.value);
+      }
+    });
+  })();
+  </script>
 {% endblock content %}
