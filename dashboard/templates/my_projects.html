@@ -12,9 +12,10 @@
   {% endfor %}
   {% endif %}
 
-  {% if invites %}
+  {% if invite_rows %}
   <div class="space-y-4">
-    {% for invite in invites %}
+    {% for row in invite_rows %}
+    {% with invite=row.invite approval_documents=row.approval_documents %}
     <div class="card bg-base-200 shadow-sm">
       <div class="card-body">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -67,6 +68,7 @@
             {% endif %}
           </div>
         </div>
+
         {% if invite.review_status == 'rejected' %}
         <div class="alert alert-error mt-4">
           <div>
@@ -84,8 +86,25 @@
           </div>
         </div>
         {% endif %}
+
+        {% if invite.review_status == 'approved' and approval_documents %}
+        <div class="mt-4">
+          <h3 class="font-semibold mb-2">Approval Documents</h3>
+          <div class="space-y-2">
+            {% for doc in approval_documents %}
+            <div class="flex items-center justify-between bg-base-100 rounded-lg px-4 py-3 border border-base-300">
+              <div>{{ doc.title }}</div>
+              <a href="{{ doc.document.url }}" target="_blank" class="btn btn-sm btn-outline">
+                Open PDF
+              </a>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
       </div>
     </div>
+    {% endwith %}
     {% endfor %}
   </div>
   {% else %}
