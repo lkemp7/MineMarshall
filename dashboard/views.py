@@ -1166,12 +1166,14 @@ def project_invite_form(request, invite_id):
         messages.success(request, f'Form "{required_form.title}" submitted successfully.')
         return redirect("my_projects")
                                                                               
+    draft = FormDraft.objects.filter(user=request.user, invite=invite).first()
+    draft_answers = draft.answers_json if draft else {}
+    
     for q in questions:
+        q.draft_value = draft_answers.get(f"question_{q.id}", "")
         if q.question_type == 'licence_upload':                                                             
             q.prefilled_licence = request.user.credentials.filter(title=q.options_text, image__isnull=False).first()
     
-    draft = FormDraft.objects.filter(user=request.user, invite=invite).first()
-    draft_answers = draft.answers_json if draft else {}
                                                                                                             
     return render(  
         request,
