@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.contrib import messages
 from django.template.loader import render_to_string
 import uuid
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.db.models import Prefetch
 from .models import FormAssignment, FormSubmission, Answer, Project, ProjectRole, ProjectInvite, ApprovalDocument
 from .models import Form, Question, WorkerProfile, Credential, FormDraft, SubmissionCredentialAttachment,LICENCE_PRESETS,LICENCE_PRESET_LABELS
@@ -86,6 +86,13 @@ def personnel(request):
 def user_profile(request, user_id):
     user_qs = CustomUser.objects.prefetch_related("credentials").select_related("worker_profile")
     user_obj = get_object_or_404(user_qs, pk=user_id)
+    
+    if not _is_admin_or_manager(request.user) and request.user.pk != user_obj.pk:
+        return HttpResponseForbidden("Access Denied")
+    
+    if request.user.role == "manager" and user_obj.role not in ["user"] and request.user.pk != user_obj.pk:
+        messages.error(request, 'You do not have permission to view admin/manager profiles.')
+        return redirect('personnel')
 
     can_edit_credentials = (
         request.user.role in ["admin", "manager"] or request.user.pk == user_obj.pk
@@ -515,7 +522,54 @@ def add_user(request):
 
 @login_required
 def edit_user_profile(request, pk):
-    return redirect('user_profile', user_id=request.user.pk)
+    if not _is_admin_or_manager(request.user) and request.user.pk != pk:
+        messages.error(request, 'You do not have permission to edit profiles.')
+        return redirect('personnel')
+    
+    user_obj = get_object_or_404(CustomUser, pk=pk)
+    
+    if request.user.role == "manager" and user_obj.role not in ["user"]:
+        messages.error(request, 'You do not have permission to edit admin/manager profiles.')
+        return redirect('personnel')
+                
+    
+    if request.method == 'POST':
+        user_obj.first_name = request.POST.get('first_name')
+        user_obj.last_name = request.POST.get('last_name')
+        user_obj.email = request.POST.get('email')
+        user_obj.phone_number = request.POST.get('phone_number')
+        try:
+            with transaction.atomic():
+                user_obj.save()
+        except IntegrityError:
+            return HttpResponse('<div class="alert alert-error"><span>That email address is already in use.</span></div>')
+        
+        # Update or create worker profile
+        if hasattr(user_obj, 'worker_profile'):
+            profile = user_obj.worker_profile
+        else:
+            profile = WorkerProfile.objects.create(user=user_obj)
+        
+        dob = request.POST.get('dob')
+        profile.dob = dob if dob else None
+        profile.role = request.POST.get('worker_role')
+        profile.project = request.POST.get('project')
+        profile.employer = request.POST.get('employer')
+        profile.emergency_contact_name = request.POST.get('emergency_contact_name')
+        profile.emergency_contact_mobile = request.POST.get('emergency_contact_mobile')
+        
+        try:
+            with transaction.atomic():
+                profile.save()
+        except IntegrityError:
+            return HttpResponse('<div class="alert alert-error"><span>That email address is already in use.</span></div>')
+        
+        messages.success(request, f'Profile updated for {user_obj.first_name} {user_obj.last_name}')
+        response = HttpResponse(status=204)
+        response['HX-Redirect'] = reverse('user_profile', kwargs={'user_id': pk})
+        return response
+    
+    return redirect('user_profile', user_id=pk)
 
 
 @login_required
@@ -1333,7 +1387,7 @@ def start_induction(request):
         setup_path = reverse("setup_account", kwargs={"token": invite.token})
         setup_url = request.build_absolute_uri(setup_path)
         #error debugging
-        print("EMAIL_BACKEND =", settings.EMAIL_BACKEND)
+        # print("EMAIL_BACKEND =", settings.EMAIL_BACKEND)
         
         send_mail(
             subject="Complete your MineMarshall account setup",
@@ -1505,7 +1559,7 @@ def view_submission(request, submission_id):
 @login_required
 @require_POST
 def delete_project(request, pk):
-    if not _is_admin_or_manager:
+    if not _is_admin_or_manager(request.user):
         return HttpResponseForbidden("Permission Denied")
 
     project = get_object_or_404(Project, pk=pk)
