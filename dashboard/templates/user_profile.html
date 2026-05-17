@@ -236,7 +236,8 @@
   <dialog id="editProfileModal" class="modal">
     <div class="modal-box max-w-2xl">
       <h3 class="font-bold text-lg mb-4">Edit Profile</h3>
-      <form method="post" action="{% url 'edit_user_profile' user_obj.pk %}">
+      <div id="edit-profile-toast"></div>
+        <form hx-post="{% url 'edit_user_profile' user_obj.pk %}" hx-target="#edit-profile-toast" hx-swap="innerHTML">
         {% csrf_token %}
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
