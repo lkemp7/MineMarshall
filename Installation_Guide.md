@@ -51,6 +51,10 @@ Ensure python is installed:
 ```bash
 sudo apt install python3.14 python3.14-venv
 ```
+Also ensure pip is updated:
+```python
+python -m pip install --upgrade pip
+```
 
 **Linux / macOS / Windows (WSL):**
 ```bash
