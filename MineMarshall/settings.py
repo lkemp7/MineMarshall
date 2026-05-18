@@ -102,6 +102,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+AUTHENTICATION_BACKENDS = ['accounts.backends.CaseInsensitiveBackend']
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/

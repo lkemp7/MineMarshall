@@ -65,8 +65,29 @@
       </aside>
       <div class="w-px bg-base-300"></div>
       <main class="flex-1 p-6 overflow-auto ml-64">
-        {% block content %} {% endblock %}
+        {% block content %} {% endblock content %}
       </main>
     </div>
+    <div class="toast toast-top toast-center z-50" id="toast-container">
+      {% for message in messages %}    
+      <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %}">
+        <span>{{ message }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  <script>
+    function toastDismiss() {
+      const container = document.getElementById('toast-container');
+      if (container && container.children.length > 0) {
+        setTimeout(function () {
+          container.style.transition = 'opacity 0.5s ease';
+          container.style.opacity = '0';
+          setTimeout(() => { container.innerHTML = ''; container.style.opacity = '1'; }, 500);
+        }, 4500);
+      }
+    }
+    toastDismiss();
+    document.addEventListener('htmx:afterSwap', toastDismiss);
+  </script>
   </body>
 </html>

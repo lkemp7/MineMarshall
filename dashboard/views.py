@@ -1,4 +1,5 @@
 from django.contrib.auth.decorators import login_required
+from django.db import models
 from accounts.models import CustomUser
 from django.contrib import messages
 from .models import Form, Question
@@ -10,10 +11,10 @@ from django.utils import timezone
 from django.contrib import messages
 from django.template.loader import render_to_string
 import uuid
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.db.models import Prefetch
-from .models import FormAssignment, FormSubmission, Answer, Project, ProjectRole, ProjectInvite
-from .models import Form, Question, WorkerProfile, Credential, SubmissionCredentialAttachment,LICENCE_PRESETS,LICENCE_PRESET_LABELS
+from .models import FormAssignment, FormSubmission, Answer, Project, ProjectRole, ProjectInvite, ApprovalDocument
+from .models import Form, Question, WorkerProfile, Credential, FormDraft, SubmissionCredentialAttachment,LICENCE_PRESETS,LICENCE_PRESET_LABELS
 from django.db.models import Count
 from django.utils import timezone
 from datetime import date
@@ -51,21 +52,28 @@ def dashboard(request):
 
 @login_required
 def my_forms(request):
-    # Only show forms created by the logged-in user
+    if not _is_admin_or_manager(request.user):
+        messages.error(request, "You do not have permission to view forms.")
+        return redirect("dashboard")
+
     forms = Form.objects.filter(created_by=request.user).order_by("-created_at")
     return render(request, "my_forms.html", {"forms": forms})
 
 
 @login_required
 def view_form(request, pk):
+    if not _is_admin_or_manager(request.user):
+        messages.error(request, "You do not have permission to view forms.")
+        return redirect("dashboard")
+
     form_obj = get_object_or_404(Form, pk=pk, created_by=request.user)
-    questions = form_obj.questions.all().order_by('order')
-    
+    questions = form_obj.questions.all().order_by("order")
+
     context = {
-        'form': form_obj,
-        'questions': questions,
+        "form": form_obj,
+        "questions": questions,
     }
-    return render(request, 'view_form.html', context)
+    return render(request, "view_form.html", context)
 
 
 @login_required
@@ -78,10 +86,21 @@ def personnel(request):
 def user_profile(request, user_id):
     user_qs = CustomUser.objects.prefetch_related("credentials").select_related("worker_profile")
     user_obj = get_object_or_404(user_qs, pk=user_id)
+    
+    if not _is_admin_or_manager(request.user) and request.user.pk != user_obj.pk:
+        return HttpResponseForbidden("Access Denied")
+    
+    if request.user.role == "manager" and user_obj.role not in ["user"] and request.user.pk != user_obj.pk:
+        messages.error(request, 'You do not have permission to view admin/manager profiles.')
+        return redirect('personnel')
 
     can_edit_credentials = (
         request.user.role in ["admin", "manager"] or request.user.pk == user_obj.pk
     )
+    can_edit_profile = (
+        request.user.role in ["admin", "manager"] or request.user.pk == user_obj.pk
+    )
+    is_self_profile = request.user.pk == user_obj.pk
 
     return render(
         request,
@@ -90,6 +109,8 @@ def user_profile(request, user_id):
             "user_obj": user_obj,
             "licence_presets": LICENCE_PRESETS,
             "can_edit_credentials": can_edit_credentials,
+            "can_edit_profile": can_edit_profile,
+            "is_self_profile": is_self_profile,
         },
     )
 
@@ -122,6 +143,16 @@ def _project_member_status(invite):
 
     return "Submitted", has_issue, expired_creds
 
+def _get_invite_approval_documents(invite):
+    return ApprovalDocument.objects.filter(
+        project=invite.project,
+        is_active=True,
+    ).filter(
+        models.Q(scope="project") |
+        models.Q(scope="role", role=invite.project_role) |
+        models.Q(scope="user", target_user=invite.user)
+    ).order_by("scope", "title")
+    
 @login_required
 def metrics(request):
     if not _is_admin_or_manager(request.user):
@@ -491,18 +522,27 @@ def add_user(request):
 
 @login_required
 def edit_user_profile(request, pk):
-    if request.user.role not in ['admin', 'manager']:
+    if not _is_admin_or_manager(request.user) and request.user.pk != pk:
         messages.error(request, 'You do not have permission to edit profiles.')
         return redirect('personnel')
     
     user_obj = get_object_or_404(CustomUser, pk=pk)
+    
+    if request.user.role == "manager" and user_obj.role not in ["user"]:
+        messages.error(request, 'You do not have permission to edit admin/manager profiles.')
+        return redirect('personnel')
+                
     
     if request.method == 'POST':
         user_obj.first_name = request.POST.get('first_name')
         user_obj.last_name = request.POST.get('last_name')
         user_obj.email = request.POST.get('email')
         user_obj.phone_number = request.POST.get('phone_number')
-        user_obj.save()
+        try:
+            with transaction.atomic():
+                user_obj.save()
+        except IntegrityError:
+            return HttpResponse('<div class="alert alert-error"><span>That email address is already in use.</span></div>')
         
         # Update or create worker profile
         if hasattr(user_obj, 'worker_profile'):
@@ -517,12 +557,20 @@ def edit_user_profile(request, pk):
         profile.employer = request.POST.get('employer')
         profile.emergency_contact_name = request.POST.get('emergency_contact_name')
         profile.emergency_contact_mobile = request.POST.get('emergency_contact_mobile')
-        profile.save()
+        
+        try:
+            with transaction.atomic():
+                profile.save()
+        except IntegrityError:
+            return HttpResponse('<div class="alert alert-error"><span>That email address is already in use.</span></div>')
         
         messages.success(request, f'Profile updated for {user_obj.first_name} {user_obj.last_name}')
-        return redirect('user_profile', user_id=pk)
+        response = HttpResponse(status=204)
+        response['HX-Redirect'] = reverse('user_profile', kwargs={'user_id': pk})
+        return response
     
     return redirect('user_profile', user_id=pk)
+
 
 @login_required
 def save_credential(request, pk):
@@ -884,15 +932,37 @@ def projects(request):
     if request.method == "POST":
         title = (request.POST.get("title") or "").strip()
         description = (request.POST.get("description") or "").strip()
-        start_date = request.POST.get("start_date")
-        end_date = request.POST.get("end_date") or None
+        start_date_raw = (request.POST.get("start_date") or "").strip()
+        end_date_raw = (request.POST.get("end_date") or "").strip()
 
         if not title:
             messages.error(request, "Project title is required.")
             return redirect("projects")
 
-        if not start_date:
+        if not start_date_raw:
             messages.error(request, "Project start date is required.")
+            return redirect("projects")
+
+        try:
+            start_date = date.fromisoformat(start_date_raw)
+        except ValueError:
+            messages.error(request, "Please enter a valid project start date.")
+            return redirect("projects")
+
+        end_date = None
+        if end_date_raw:
+            try:
+                end_date = date.fromisoformat(end_date_raw)
+            except ValueError:
+                messages.error(request, "Please enter a valid project end date.")
+                return redirect("projects")
+
+        if start_date.year < 1900 or start_date.year > 2099:
+            messages.error(request, "Project start date must be between 1900 and 2099.")
+            return redirect("projects")
+
+        if end_date and (end_date.year < 1900 or end_date.year > 2099):
+            messages.error(request, "Project end date must be between 1900 and 2099.")
             return redirect("projects")
 
         if end_date and end_date < start_date:
@@ -915,7 +985,6 @@ def projects(request):
 
 @login_required
 def project_detail(request, pk):
-    """Admin/Manager page to manage project roles, forms, and invites."""
     if not _is_admin_or_manager(request.user):
         messages.error(request, "You do not have permission to manage projects.")
         return redirect("dashboard")
@@ -924,12 +993,15 @@ def project_detail(request, pk):
         Project.objects.prefetch_related(
             Prefetch("roles", queryset=ProjectRole.objects.select_related("required_form")),
             Prefetch("invites", queryset=ProjectInvite.objects.select_related("user", "project_role", "project_role__required_form")),
+            "approval_documents",
         ),
         pk=pk,
     )
 
     forms = Form.objects.filter(is_active=True).order_by("title")
     users = CustomUser.objects.all().order_by("first_name", "last_name", "email")
+
+    project_documents = project.approval_documents.filter(scope="project", is_active=True)
 
     return render(
         request,
@@ -938,6 +1010,7 @@ def project_detail(request, pk):
             "project": project,
             "forms": forms,
             "users": users,
+            "project_documents": project_documents,
         },
     )
 
@@ -1059,17 +1132,97 @@ def invite_users_to_project_role(request, project_pk, role_pk):
     messages.success(request, f"{' and '.join(msg_parts)} for role {role_obj.title}.")
     return redirect("project_detail", pk=project_pk)
 
+@login_required
+@require_POST
+def add_project_approval_document(request, pk):
+    if not _is_admin_or_manager(request.user):
+        return HttpResponseForbidden("Permission denied")
+
+    project = get_object_or_404(Project, pk=pk)
+    title = (request.POST.get("title") or "").strip()
+    uploaded_file = request.FILES.get("document")
+
+    if not title or not uploaded_file:
+        messages.error(request, "Document title and file are required.")
+        return redirect("project_detail", pk=project.pk)
+
+    if not uploaded_file.name.lower().endswith(".pdf"):
+        messages.error(request, "Only PDF files are supported.")
+        return redirect("project_detail", pk=project.pk)
+
+    ApprovalDocument.objects.create(
+        project=project,
+        scope="project",
+        title=title,
+        document=uploaded_file,
+        uploaded_by=request.user,
+    )
+
+    messages.success(request, "Project approval document added.")
+    return redirect("project_detail", pk=project.pk)
+
+
+@login_required
+@require_POST
+def add_role_approval_document(request, project_pk, role_pk):
+    if not _is_admin_or_manager(request.user):
+        return HttpResponseForbidden("Permission denied")
+
+    role = get_object_or_404(ProjectRole, pk=role_pk, project_id=project_pk)
+    title = (request.POST.get("title") or "").strip()
+    uploaded_file = request.FILES.get("document")
+
+    if not title or not uploaded_file:
+        messages.error(request, "Document title and file are required.")
+        return redirect("project_detail", pk=project_pk)
+
+    if not uploaded_file.name.lower().endswith(".pdf"):
+        messages.error(request, "Only PDF files are supported.")
+        return redirect("project_detail", pk=project_pk)
+
+    ApprovalDocument.objects.create(
+        project=role.project,
+        role=role,
+        scope="role",
+        title=title,
+        document=uploaded_file,
+        uploaded_by=request.user,
+    )
+
+    messages.success(request, f'Approval document added for role "{role.title}".')
+    return redirect("project_detail", pk=project_pk)
+
+
+@login_required
+@require_POST
+def delete_approval_document(request, doc_id):
+    if not _is_admin_or_manager(request.user):
+        return HttpResponseForbidden("Permission denied")
+
+    document = get_object_or_404(ApprovalDocument, pk=doc_id)
+    project_id = document.project_id
+    document.delete()
+
+    messages.success(request, "Approval document deleted.")
+    return redirect("project_detail", pk=project_id)
 
 @login_required
 def my_projects(request):
-    """User-facing invites list."""
     invites = (
         ProjectInvite.objects
         .filter(user=request.user)
         .select_related("project", "project_role", "project_role__required_form")
         .order_by("-invited_at")
     )
-    return render(request, "my_projects.html", {"invites": invites})
+
+    invite_rows = []
+    for invite in invites:
+        invite_rows.append({
+            "invite": invite,
+            "approval_documents": _get_invite_approval_documents(invite) if invite.review_status == "approved" else [],
+        })
+
+    return render(request, "my_projects.html", {"invite_rows": invite_rows})
 
 
 @login_required
@@ -1144,9 +1297,14 @@ def project_invite_form(request, invite_id):
         messages.success(request, f'Form "{required_form.title}" submitted successfully.')
         return redirect("my_projects")
                                                                               
+    draft = FormDraft.objects.filter(user=request.user, invite=invite).first()
+    draft_answers = draft.answers_json if draft else {}
+    
     for q in questions:
+        q.draft_value = draft_answers.get(f"question_{q.id}", "")
         if q.question_type == 'licence_upload':                                                             
             q.prefilled_licence = request.user.credentials.filter(title=q.options_text, image__isnull=False).first()
+    
                                                                                                             
     return render(  
         request,
@@ -1154,9 +1312,38 @@ def project_invite_form(request, invite_id):
         {                                                                                                   
             "invite": invite,
             "form_obj": required_form,                                                                      
-            "questions": questions,                                                     
+            "questions": questions,
+            "draft_answers": draft_answers                                                
         },
     ) 
+    
+@login_required
+@require_POST
+def save_form_draft(request, invite_id):
+    invite = get_object_or_404(
+        ProjectInvite,
+        pk=invite_id,
+        user=request.user,
+    )
+    
+    question_id = request.POST.get("question_id")
+    value = request.POST.getlist("value")
+    
+    if not question_id:
+        return HttpResponse(status=400)
+    
+    if len(value) == 1:
+        value = value[0]
+        
+    draft, _ = FormDraft.objects.get_or_create(
+        user=request.user,
+        invite=invite,
+    )
+    
+    draft.answers_json[question_id] = value
+    draft.save(update_fields=["answers_json", "updated_at"])
+    
+    return HttpResponse(status=204)
 
 @login_required
 def start_induction(request):
@@ -1200,7 +1387,7 @@ def start_induction(request):
         setup_path = reverse("setup_account", kwargs={"token": invite.token})
         setup_url = request.build_absolute_uri(setup_path)
         #error debugging
-        print("EMAIL_BACKEND =", settings.EMAIL_BACKEND)
+        # print("EMAIL_BACKEND =", settings.EMAIL_BACKEND)
         
         send_mail(
             subject="Complete your MineMarshall account setup",
@@ -1372,7 +1559,7 @@ def view_submission(request, submission_id):
 @login_required
 @require_POST
 def delete_project(request, pk):
-    if not _is_admin_or_manager:
+    if not _is_admin_or_manager(request.user):
         return HttpResponseForbidden("Permission Denied")
 
     project = get_object_or_404(Project, pk=pk)

@@ -2,7 +2,7 @@ from django.contrib import admin
 from accounts.models import CustomUser
 from .models import Form, Question
 from django.contrib import admin
-from .models import Project, ProjectRole, ProjectInvite
+from .models import Project, ProjectRole, ProjectInvite, ApprovalDocument
 from .models import Credential, Question, Answer, SubmissionCredentialAttachment
 from .models import WorkerProfile, Credential, FormSubmission, Answer, OnboardingInvite
 
@@ -13,6 +13,7 @@ admin.site.register(SubmissionCredentialAttachment)
 admin.site.register(Project)
 admin.site.register(ProjectRole)
 admin.site.register(ProjectInvite)
+admin.site.register(ApprovalDocument)
 
 admin.site.register(CustomUser)
 

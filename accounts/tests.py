@@ -1,6 +1,8 @@
-from django.test import TestCase
+from django.test import TestCase, SimpleTestCase
 from django.db import IntegrityError
+from unittest.mock import patch, MagicMock
 from accounts.models import CustomUser
+import json
 
 class CustomUserModelTest(TestCase):
     def test_username_set_to_email(self):
@@ -53,3 +55,4 @@ class CustomUserModelTest(TestCase):
             password="password",
             role="user"
             )
+            

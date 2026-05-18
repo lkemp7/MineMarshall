@@ -7,6 +7,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('dashboard', '0013_alter_credential_image_and_more'),
+        ('dashboard', '0014_alter_credential_image_and_more'),
     ]
 
     operations = [

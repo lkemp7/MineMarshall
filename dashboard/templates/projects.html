@@ -6,12 +6,12 @@
     <h1 class="text-4xl text-[#F79327]">Projects</h1>
 
     {% if request.user.role == 'admin' or request.user.role == 'manager' %}
-    <button
-      class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]"
-      onclick="document.getElementById('createProjectModal').showModal()"
-    >
+    <button class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]"
+      onclick="document.getElementById('createProjectModal').showModal()">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+        <path fill-rule="evenodd"
+          d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+          clip-rule="evenodd" />
       </svg>
       Create Project
     </button>
@@ -19,11 +19,11 @@
   </div>
 
   {% if messages %}
-    {% for message in messages %}
-      <div class="alert mb-4 {% if message.tags == 'error' %}alert-error{% else %}alert-success{% endif %}">
-        <span>{{ message }}</span>
-      </div>
-    {% endfor %}
+  {% for message in messages %}
+  <div class="alert mb-4 {% if message.tags == 'error' %}alert-error{% else %}alert-success{% endif %}">
+    <span>{{ message }}</span>
+  </div>
+  {% endfor %}
   {% endif %}
 
   {% if projects %}
@@ -38,19 +38,19 @@
           <th>Invites</th>
         </tr>
       </thead>
-    <tbody>
+      <tbody>
         {% for project in projects %}
         <tr class="cursor-pointer hover:!bg-[#F79327] hover:!bg-opacity-20"
-            data-url="{% url 'project_detail' project.id %}"
-                onclick="window.location=this.dataset.url">
-            <td>
-                <div class="font-semibold">{{ project.title }}</div>
-                {% if project.description %}
-                <div class="text-xs opacity-70 line-clamp-1">{{ project.description|truncatechars:80 }}</div>
+          data-url="{% url 'project_detail' project.id %}" onclick="window.location=this.dataset.url">
+          <td>
+            <div class="font-semibold">{{ project.title }}</div>
+            {% if project.description %}
+            <div class="text-xs opacity-70 line-clamp-1">{{ project.description|truncatechars:80 }}</div>
             {% endif %}
           </td>
           <td>{{ project.start_date|date:"Y-m-d" }}</td>
-          <td>{% if project.end_date %}{{ project.end_date|date:"Y-m-d" }}{% else %}<span class="badge badge-ghost">Indefinite</span>{% endif %}</td>
+          <td>{% if project.end_date %}{{ project.end_date|date:"Y-m-d" }}{% else %}<span
+              class="badge badge-ghost">Indefinite</span>{% endif %}</td>
           <td>{{ project.roles.count }}</td>
           <td>{{ project.invites.count }}</td>
         </tr>
@@ -86,21 +86,23 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="form-control">
           <label class="label"><span class="label-text">Start Date *</span></label>
-          <input type="date" name="start_date" class="input input-bordered" required />
+          <input type="date" name="start_date" class="input input-bordered" min="1900-01-01" max="2099-12-31"
+            required />
         </div>
 
         <div class="form-control">
           <label class="label"><span class="label-text">End Date (Optional)</span></label>
-          <input type="date" name="end_date" class="input input-bordered" />
+          <input type="date" name="end_date" class="input input-bordered" min="1900-01-01" max="2099-12-31" />
           <label class="label">
             <span class="label-text-alt opacity-70">Leave blank for indefinite project</span>
           </label>
         </div>
       </div>
-
       <div class="modal-action">
-        <button type="button" class="btn" onclick="document.getElementById('createProjectModal').close()">Cancel</button>
-        <button type="submit" class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]">
+        <button type="button" class="btn"
+          onclick="document.getElementById('createProjectModal').close()">Cancel</button>
+        <button type="submit"
+          class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]">
           Create Project
         </button>
       </div>

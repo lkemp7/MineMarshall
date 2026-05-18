@@ -134,13 +134,41 @@ class FormAssignment(models.Model):
         return f"{self.form.title} → {self.user.email}"
 
 class FormSubmission(models.Model):
-    form = models.ForeignKey(Form, on_delete=models.CASCADE, related_name='submissions')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='form_submissions')
+    form = models.ForeignKey(Form, 
+                             on_delete=models.CASCADE, 
+                             related_name='submissions',
+                             )
+    
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name='form_submissions'
+        )
+    
     submitted_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
         return f"{self.user.email} - {self.form.title} - {self.submitted_at}"
+    
 
+class FormDraft(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete = models.CASCADE,
+        related_name="form_drafts",        
+    )
+    
+    invite = models.ForeignKey(
+        "ProjectInvite",
+        on_delete=models.CASCADE,
+        related_name="form_drafts"
+    )
+    
+    answers_json = models.JSONField(default=dict)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ("user", "invite")
 class Answer(models.Model):
     submission = models.ForeignKey(FormSubmission, on_delete=models.CASCADE, related_name='answers')
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
@@ -270,6 +298,54 @@ class ProjectInvite(models.Model):
     def __str__(self):
         return f"{self.user.email} invited to {self.project.title} as {self.project_role.title}"
     
+def approval_document_upload_path(instance, filename):
+    return f"approval_documents/{instance.project_id}/{filename}"
+
+
+class ApprovalDocument(models.Model):
+    SCOPE_CHOICES = [
+        ("project", "Project"),
+        ("role", "Role"),
+        ("user", "User"),
+    ]
+
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="approval_documents",
+    )
+    role = models.ForeignKey(
+        ProjectRole,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="approval_documents",
+    )
+    target_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="approval_documents",
+    )
+    scope = models.CharField(max_length=20, choices=SCOPE_CHOICES)
+    title = models.CharField(max_length=255)
+    document = models.FileField(upload_to=approval_document_upload_path)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="uploaded_approval_documents",
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["scope", "title"]
+
+    def __str__(self):
+        return f"{self.project.title} - {self.title} ({self.scope})"
 
 class OnboardingInvite(models.Model):
     

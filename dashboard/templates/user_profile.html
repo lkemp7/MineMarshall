@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
 {% block header_extra %}
-  <!-- Overhanging avatar -->
   <div class="absolute z-20 left-72 sm:left-80 bottom-[-8rem]">
     <div class="w-40 h-40 sm:w-60 sm:h-60
                 rounded-full ring ring-[#F79327] ring-offset-base-100 ring-offset-2
@@ -22,7 +21,7 @@
       <h1 class="text-4xl text-[#F79327]">
         {{ user_obj.first_name }} {{ user_obj.last_name }}
       </h1>
-      {% if request.user.role == 'admin' or request.user.role == 'manager' %}
+      {% if can_edit_profile %}
         <button class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]" onclick="document.getElementById('editProfileModal').showModal()">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
             <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
@@ -33,9 +32,7 @@
     </div>
     <p class="opacity-70 mb-6">{{ user_obj.email }}</p>
 
-    <!-- Two-column layout (stacks on mobile) -->
     <div class="grid gap-6 grid-cols-1 lg:grid-cols-2">
-      <!-- LEFT: status + personal details -->
       <div class="space-y-4">
         <div class="card bg-base-200 p-4">
           <h3 class="font-semibold mb-2">Status</h3>
@@ -66,10 +63,11 @@
           </div>
         </div>
 
-        <a href="{% url 'personnel' %}" class="btn btn-ghost">← Back to Personnel</a>
+        {% if not is_self_profile %}
+          <a href="{% url 'personnel' %}" class="btn btn-ghost">← Back to Personnel</a>
+        {% endif %}
       </div>
 
-      <!-- RIGHT: credentials -->
       <div class="space-y-4">
         <div class="card bg-base-200 p-4">
           <div class="flex items-center justify-between mb-2">
@@ -135,7 +133,14 @@
         </div>
 
         <div class="card bg-base-200 p-4">
-          <h3 class="font-semibold mb-2">Optional Credentials</h3>
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="font-semibold">Optional Credentials</h3>
+            {% if can_edit_credentials %}
+              <button class="btn btn-sm btn-ghost" onclick="openOptionalCredentialModal()">
+                + Add
+              </button>
+            {% endif %}
+          </div>
           <div class="overflow-x-auto">
             <table class="table table-compact w-full">
               <thead>
@@ -188,34 +193,140 @@
           </div>
         </div>
 
-        <!-- Delete User Button -->
-{% if request.user.role == 'admin' or request.user.role == 'manager' %}
-  <div class="flex justify-end">
-    <button class="btn btn-error text-white" onclick="document.getElementById('deleteUserModal').showModal()">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-      </svg>
-      Delete User
-    </button>
-  </div>
-{% endif %}
+        {% if request.user.role == 'admin' or request.user.role == 'manager' %}
+          {% if not is_self_profile %}
+          <div class="flex justify-end">
+            <button class="btn btn-error text-white" onclick="document.getElementById('deleteUserModal').showModal()">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+              </svg>
+              Delete User
+            </button>
+          </div>
+          {% endif %}
+        {% endif %}
       </div>
     </div>
   </div>
 
-  <!-- Delete User Confirmation Modal -->
   {% if request.user.role == 'admin' or request.user.role == 'manager' %}
-  <dialog id="deleteUserModal" class="modal">
-    <div class="modal-box">
-      <h3 class="font-bold text-lg text-error mb-4">Delete User</h3>
-      <p class="mb-4">Are you sure you want to delete <strong>{{ user_obj.first_name }} {{ user_obj.last_name }}</strong>?</p>
-      <p class="text-sm opacity-70 mb-4">This action cannot be undone. All associated data including credentials and worker profile will be permanently deleted.</p>
-      
-      <form method="post" action="{% url 'delete_user' user_obj.pk %}">
+    {% if not is_self_profile %}
+    <dialog id="deleteUserModal" class="modal">
+      <div class="modal-box">
+        <h3 class="font-bold text-lg text-error mb-4">Delete User</h3>
+        <p class="mb-4">Are you sure you want to delete <strong>{{ user_obj.first_name }} {{ user_obj.last_name }}</strong>?</p>
+        <p class="text-sm opacity-70 mb-4">This action cannot be undone. All associated data including credentials and worker profile will be permanently deleted.</p>
+
+        <form method="post" action="{% url 'delete_user' user_obj.pk %}">
+          {% csrf_token %}
+          <div class="modal-action">
+            <button type="button" class="btn" onclick="document.getElementById('deleteUserModal').close()">Cancel</button>
+            <button type="submit" class="btn btn-error text-white">Delete User</button>
+          </div>
+        </form>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+      </form>
+    </dialog>
+    {% endif %}
+  {% endif %}
+
+  {% if can_edit_profile %}
+  <dialog id="editProfileModal" class="modal">
+    <div class="modal-box max-w-2xl">
+      <h3 class="font-bold text-lg mb-4">Edit Profile</h3>
+      <div id="edit-profile-toast"></div>
+        <form hx-post="{% url 'edit_user_profile' user_obj.pk %}" hx-target="#edit-profile-toast" hx-swap="innerHTML">
         {% csrf_token %}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="form-control">
+            <label class="label"><span class="label-text">First Name</span></label>
+            <input type="text" name="first_name" value="{{ user_obj.first_name }}" class="input input-bordered" required />
+          </div>
+
+          <div class="form-control">
+            <label class="label"><span class="label-text">Last Name</span></label>
+            <input type="text" name="last_name" value="{{ user_obj.last_name }}" class="input input-bordered" required />
+          </div>
+
+          <div class="form-control">
+            <label class="label"><span class="label-text">Email</span></label>
+            <input type="email" name="email" value="{{ user_obj.email }}" class="input input-bordered" required />
+          </div>
+
+          <div class="form-control">
+            <label class="label"><span class="label-text">Phone Number</span></label>
+            <input type="text" name="phone_number" value="{{ user_obj.phone_number }}" class="input input-bordered" />
+          </div>
+
+          {% if user_obj.worker_profile %}
+          <div class="form-control">
+            <label class="label"><span class="label-text">Date of Birth</span></label>
+            <input type="date" name="dob" value="{{ user_obj.worker_profile.dob|date:'Y-m-d' }}" class="input input-bordered" />
+          </div>
+
+          <div class="form-control">
+            <label class="label"><span class="label-text">Job Role</span></label>
+            <input type="text" name="worker_role" value="{{ user_obj.worker_profile.role }}" class="input input-bordered" />
+          </div>
+
+          <div class="form-control">
+            <label class="label"><span class="label-text">Project</span></label>
+            <input type="text" name="project" value="{{ user_obj.worker_profile.project }}" class="input input-bordered" />
+          </div>
+
+          <div class="form-control">
+            <label class="label"><span class="label-text">Employer</span></label>
+            <input type="text" name="employer" value="{{ user_obj.worker_profile.employer }}" class="input input-bordered" />
+          </div>
+
+          <div class="form-control">
+            <label class="label"><span class="label-text">Emergency Contact Name</span></label>
+            <input type="text" name="emergency_contact_name" value="{{ user_obj.worker_profile.emergency_contact_name }}" class="input input-bordered" />
+          </div>
+
+          <div class="form-control">
+            <label class="label"><span class="label-text">Emergency Contact Mobile</span></label>
+            <input type="text" name="emergency_contact_mobile" value="{{ user_obj.worker_profile.emergency_contact_mobile }}" class="input input-bordered" />
+          </div>
+          {% else %}
+          <div class="form-control">
+            <label class="label"><span class="label-text">Date of Birth</span></label>
+            <input type="date" name="dob" class="input input-bordered" />
+          </div>
+
+          <div class="form-control">
+            <label class="label"><span class="label-text">Job Role</span></label>
+            <input type="text" name="worker_role" class="input input-bordered" />
+          </div>
+
+          <div class="form-control">
+            <label class="label"><span class="label-text">Project</span></label>
+            <input type="text" name="project" class="input input-bordered" />
+          </div>
+
+          <div class="form-control">
+            <label class="label"><span class="label-text">Employer</span></label>
+            <input type="text" name="employer" class="input input-bordered" />
+          </div>
+
+          <div class="form-control">
+            <label class="label"><span class="label-text">Emergency Contact Name</span></label>
+            <input type="text" name="emergency_contact_name" class="input input-bordered" />
+          </div>
+
+          <div class="form-control">
+            <label class="label"><span class="label-text">Emergency Contact Mobile</span></label>
+            <input type="text" name="emergency_contact_mobile" class="input input-bordered" />
+          </div>
+          {% endif %}
+        </div>
+
         <div class="modal-action">
-          <button type="button" class="btn" onclick="document.getElementById('deleteUserModal').close()">Cancel</button>
-          <button type="submit" class="btn btn-error text-white">Delete User</button>
+          <button type="button" class="btn" onclick="document.getElementById('editProfileModal').close()">Cancel</button>
+          <button type="submit" class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]">Save Changes</button>
         </div>
       </form>
     </div>
@@ -225,220 +336,120 @@
   </dialog>
   {% endif %}
 
-<!-- Edit Profile Modal -->
-{% if request.user.role == 'admin' or request.user.role == 'manager' %}
-<dialog id="editProfileModal" class="modal">
-  <div class="modal-box max-w-2xl">
-    <h3 class="font-bold text-lg mb-4">Edit Profile</h3>
-    <form method="post" action="{% url 'edit_user_profile' user_obj.pk %}">
-      {% csrf_token %}
-      
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Basic Info -->
-        <div class="form-control">
-          <label class="label"><span class="label-text">First Name</span></label>
-          <input type="text" name="first_name" value="{{ user_obj.first_name }}" class="input input-bordered" required />
+  {% if can_edit_credentials %}
+  <dialog id="addCredentialModal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg mb-4" id="credentialModalTitle">Add Credential</h3>
+      <form method="post" action="{% url 'save_credential' user_obj.pk %}" id="credentialForm" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="credential_id" id="credential_id" value="">
+
+        <div class="form-control mb-4">
+          <label class="label"><span class="label-text">Licence Preset</span></label>
+          <select name="licence_preset" id="licence_preset" class="select select-bordered" onchange="toggleCustomLicenceName()">
+            {% for key, label in licence_presets %}
+              <option value="{{ key }}">{{ label }}</option>
+            {% endfor %}
+          </select>
         </div>
-        
-        <div class="form-control">
-          <label class="label"><span class="label-text">Last Name</span></label>
-          <input type="text" name="last_name" value="{{ user_obj.last_name }}" class="input input-bordered" required />
+
+        <div class="form-control mb-4" id="customLicenceNameWrapper" style="display:none;">
+          <label class="label"><span class="label-text">Additional Licence Name</span></label>
+          <input type="text" name="custom_title" id="custom_title" class="input input-bordered" placeholder="e.g. White Card" />
         </div>
-        
-        <div class="form-control">
-          <label class="label"><span class="label-text">Email</span></label>
-          <input type="email" name="email" value="{{ user_obj.email }}" class="input input-bordered" required />
+
+        <input type="hidden" name="title" id="cred_title" />
+
+        <div class="form-control mb-4">
+          <label class="label"><span class="label-text">Issue Date</span></label>
+          <input type="date" name="issue_date" id="cred_issue_date" class="input input-bordered" />
         </div>
-        
-        <div class="form-control">
-          <label class="label"><span class="label-text">Phone Number</span></label>
-          <input type="text" name="phone_number" value="{{ user_obj.phone_number }}" class="input input-bordered" />
+
+        <div class="form-control mb-4">
+          <label class="label"><span class="label-text">Expiry Date</span></label>
+          <input type="date" name="expiry_date" id="cred_expiry_date" class="input input-bordered" />
         </div>
-        
-        <!-- Worker Profile Fields -->
-        {% if user_obj.worker_profile %}
-        <div class="form-control">
-          <label class="label"><span class="label-text">Date of Birth</span></label>
-          <input type="date" name="dob" value="{{ user_obj.worker_profile.dob|date:'Y-m-d' }}" class="input input-bordered" />
+
+        <div class="form-control mb-4">
+          <label class="cursor-pointer label">
+            <span class="label-text">Required Credential</span>
+            <input type="checkbox" name="required" id="cred_required" class="checkbox checkbox-primary" />
+          </label>
         </div>
-        
-        <div class="form-control">
-          <label class="label"><span class="label-text">Job Role</span></label>
-          <input type="text" name="worker_role" value="{{ user_obj.worker_profile.role }}" class="input input-bordered" />
+
+        <div class="form-control mb-4">
+          <label class="label"><span class="label-text">Licence Image</span></label>
+          <input type="file" name="credential_image" accept="image/*" class="file-input file-input-bordered w-full" />
         </div>
-        
-        <div class="form-control">
-          <label class="label"><span class="label-text">Project</span></label>
-          <input type="text" name="project" value="{{ user_obj.worker_profile.project }}" class="input input-bordered" />
+
+        <div class="modal-action">
+          <button type="button" class="btn" onclick="closeCredentialModal()">Cancel</button>
+          <button type="submit" class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]">Save</button>
         </div>
-        
-        <div class="form-control">
-          <label class="label"><span class="label-text">Employer</span></label>
-          <input type="text" name="employer" value="{{ user_obj.worker_profile.employer }}" class="input input-bordered" />
-        </div>
-        
-        <div class="form-control">
-          <label class="label"><span class="label-text">Emergency Contact Name</span></label>
-          <input type="text" name="emergency_contact_name" value="{{ user_obj.worker_profile.emergency_contact_name }}" class="input input-bordered" />
-        </div>
-        
-        <div class="form-control">
-          <label class="label"><span class="label-text">Emergency Contact Mobile</span></label>
-          <input type="text" name="emergency_contact_mobile" value="{{ user_obj.worker_profile.emergency_contact_mobile }}" class="input input-bordered" />
-        </div>
-        {% else %}
-        <div class="form-control">
-          <label class="label"><span class="label-text">Date of Birth</span></label>
-          <input type="date" name="dob" class="input input-bordered" />
-        </div>
-        
-        <div class="form-control">
-          <label class="label"><span class="label-text">Job Role</span></label>
-          <input type="text" name="worker_role" class="input input-bordered" />
-        </div>
-        
-        <div class="form-control">
-          <label class="label"><span class="label-text">Project</span></label>
-          <input type="text" name="project" class="input input-bordered" />
-        </div>
-        
-        <div class="form-control">
-          <label class="label"><span class="label-text">Employer</span></label>
-          <input type="text" name="employer" class="input input-bordered" />
-        </div>
-        
-        <div class="form-control">
-          <label class="label"><span class="label-text">Emergency Contact Name</span></label>
-          <input type="text" name="emergency_contact_name" class="input input-bordered" />
-        </div>
-        
-        <div class="form-control">
-          <label class="label"><span class="label-text">Emergency Contact Mobile</span></label>
-          <input type="text" name="emergency_contact_mobile" class="input input-bordered" />
-        </div>
-        {% endif %}
-      </div>
-      
-      <div class="modal-action">
-        <button type="button" class="btn" onclick="document.getElementById('editProfileModal').close()">Cancel</button>
-        <button type="submit" class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]">Save Changes</button>
-      </div>
+      </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
     </form>
-  </div>
-  <form method="dialog" class="modal-backdrop">
-    <button>close</button>
-  </form>
-</dialog>
-{% endif %}
+  </dialog>
 
-{% if can_edit_credentials %}
-<dialog id="addCredentialModal" class="modal">
-  <div class="modal-box">
-    <h3 class="font-bold text-lg mb-4" id="credentialModalTitle">Add Credential</h3>
-    <form method="post" action="{% url 'save_credential' user_obj.pk %}" id="credentialForm" enctype="multipart/form-data">
-      {% csrf_token %}
-      <input type="hidden" name="credential_id" id="credential_id" value="">
-      
-      <div class="form-control mb-4">
-        <label class="label"><span class="label-text">Licence Preset</span></label>
-        <select name="licence_preset" id="licence_preset" class="select select-bordered" onchange="toggleCustomLicenceName()">
-          {% for key, label in licence_presets %}
-            <option value="{{ key }}">{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
+  <script>
+    const presetMap = {
+      "driver_licence": "Driver Licence",
+      "bus_licence": "Bus Licence",
+      "passport": "Passport",
+      "blue_card": "Blue Card",
+      "forklift_licence": "Forklift Licence",
+      "additional": "Additional Licence",
+    };
 
-      <div class="form-control mb-4" id="customLicenceNameWrapper" style="display:none;">
-        <label class="label"><span class="label-text">Additional Licence Name</span></label>
-        <input type="text" name="custom_title" id="custom_title" class="input input-bordered" placeholder="e.g. White Card" />
-      </div>
-
-      <input type="hidden" name="title" id="cred_title" />
-      
-      <div class="form-control mb-4">
-        <label class="label"><span class="label-text">Issue Date</span></label>
-        <input type="date" name="issue_date" id="cred_issue_date" class="input input-bordered" />
-      </div>
-      
-      <div class="form-control mb-4">
-        <label class="label"><span class="label-text">Expiry Date</span></label>
-        <input type="date" name="expiry_date" id="cred_expiry_date" class="input input-bordered" />
-      </div>
-      
-      <div class="form-control mb-4">
-        <label class="cursor-pointer label">
-          <span class="label-text">Required Credential</span>
-          <input type="checkbox" name="required" id="cred_required" class="checkbox checkbox-primary" />
-        </label>
-      </div>
-
-      <div class="form-control mb-4">
-        <label class="label"><span class="label-text">Licence Image</span></label>
-        <input type="file" name="credential_image" accept="image/*" class="file-input file-input-bordered w-full" />
-      </div>
-      
-      <div class="modal-action">
-        <button type="button" class="btn" onclick="closeCredentialModal()">Cancel</button>
-        <button type="submit" class="btn bg-[#F79327] border-[#F79327] text-white hover:bg-[#e3851f] hover:border-[#e3851f]">Save</button>
-      </div>
-    </form>
-  </div>
-  <form method="dialog" class="modal-backdrop">
-    <button>close</button>
-  </form>
-</dialog>
-
-<script>
-  const presetMap = {
-    "driver_licence": "Driver Licence",
-    "bus_licence": "Bus Licence",
-    "passport": "Passport",
-    "blue_card": "Blue Card",
-    "forklift_licence": "Forklift Licence",
-    "additional": "Additional Licence",
-  };
-
-  function findPresetKeyFromTitle(title) {
-    for (const [key, label] of Object.entries(presetMap)) {
-      if (label === title) return key;
+    function findPresetKeyFromTitle(title) {
+      for (const [key, label] of Object.entries(presetMap)) {
+        if (label === title) return key;
+      }
+      return "additional";
     }
-    return "additional";
-  }
 
-  function toggleCustomLicenceName() {
-    const preset = document.getElementById('licence_preset').value;
-    const wrapper = document.getElementById('customLicenceNameWrapper');
-    wrapper.style.display = preset === 'additional' ? 'block' : 'none';
-  }
+    function toggleCustomLicenceName() {
+      const preset = document.getElementById('licence_preset').value;
+      const wrapper = document.getElementById('customLicenceNameWrapper');
+      wrapper.style.display = preset === 'additional' ? 'block' : 'none';
+    }
 
-  function editCredential(id, title, issueDate, expiryDate, required) {
-    document.getElementById('credentialModalTitle').textContent = 'Edit Credential';
-    document.getElementById('credential_id').value = id;
-    document.getElementById('cred_issue_date').value = issueDate;
-    document.getElementById('cred_expiry_date').value = expiryDate;
-    document.getElementById('cred_required').checked = required;
+    function editCredential(id, title, issueDate, expiryDate, required) {
+      document.getElementById('credentialModalTitle').textContent = 'Edit Credential';
+      document.getElementById('credential_id').value = id;
+      document.getElementById('cred_issue_date').value = issueDate;
+      document.getElementById('cred_expiry_date').value = expiryDate;
+      document.getElementById('cred_required').checked = required;
 
-    const presetKey = findPresetKeyFromTitle(title);
-    document.getElementById('licence_preset').value = presetKey;
-    document.getElementById('custom_title').value = presetKey === 'additional' ? title : '';
-    document.getElementById('cred_title').value = title;
+      const presetKey = findPresetKeyFromTitle(title);
+      document.getElementById('licence_preset').value = presetKey;
+      document.getElementById('custom_title').value = presetKey === 'additional' ? title : '';
+      document.getElementById('cred_title').value = title;
+
+      toggleCustomLicenceName();
+      document.getElementById('addCredentialModal').showModal();
+    }
+
+    function closeCredentialModal() {
+      document.getElementById('credentialModalTitle').textContent = 'Add Credential';
+      document.getElementById('credentialForm').reset();
+      document.getElementById('credential_id').value = '';
+      document.getElementById('licence_preset').value = 'driver_licence';
+      document.getElementById('cred_title').value = '';
+      toggleCustomLicenceName();
+      document.getElementById('addCredentialModal').close();
+    }
+
+    function openOptionalCredentialModal() {
+      closeCredentialModal();
+      document.getElementById('cred_required').checked = false;
+      document.getElementById('addCredentialModal').showModal();
+    }
 
     toggleCustomLicenceName();
-    document.getElementById('addCredentialModal').showModal();
-  }
+  </script>
+  {% endif %}
 
-  function closeCredentialModal() {
-    document.getElementById('credentialModalTitle').textContent = 'Add Credential';
-    document.getElementById('credentialForm').reset();
-    document.getElementById('credential_id').value = '';
-    document.getElementById('licence_preset').value = 'driver_licence';
-    document.getElementById('cred_title').value = '';
-    toggleCustomLicenceName();
-    document.getElementById('addCredentialModal').close();
-  }
-
-  toggleCustomLicenceName();
-</script>
-{% endif %}
-  
 {% endblock %}
