@@ -15,7 +15,7 @@ from django.db import transaction, IntegrityError
 from django.db.models import Prefetch
 from .models import FormAssignment, FormSubmission, Answer, Project, ProjectRole, ProjectInvite, ApprovalDocument
 from .models import Form, Question, WorkerProfile, Credential, FormDraft, SubmissionCredentialAttachment,LICENCE_PRESETS,LICENCE_PRESET_LABELS
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.utils import timezone
 from datetime import date
 import secrets
@@ -25,28 +25,188 @@ from .models import OnboardingInvite
 from django.core.mail import send_mail
 from django.conf import settings
 from django.urls import reverse
+from django.db.models import Prefetch
 
 @login_required
 def dashboard(request):
-    users_with_expired = []
-    today = timezone.now().date()
-    
-    for user in CustomUser.objects.all():
-        # Filter credentials where expiry_date is in the past
-        expired_creds = user.credentials.filter(
-            expiry_date__lt=today,
-            expiry_date__isnull=False
+    today = timezone.localdate()
+
+    dashboard_project_cards = []
+
+    if _is_admin_or_manager(request.user):
+        projects = (
+            Project.objects
+            .prefetch_related(
+                Prefetch(
+                    "invites",
+                    queryset=ProjectInvite.objects.select_related(
+                        "user",
+                        "project_role",
+                        "project_role__required_form",
+                        "reviewed_by",
+                    ).prefetch_related("user__credentials")
+                ),
+                Prefetch(
+                    "roles",
+                    queryset=ProjectRole.objects.select_related("required_form")
+                ),
+            )
+            .order_by("title")
         )
-        if expired_creds.exists():
-            users_with_expired.append({
-                'user': user,
-                'expired_credentials': expired_creds
+
+        for project in projects:
+            invites = list(project.invites.all())
+
+            totals = {
+                "total_members": 0,
+                "not_submitted": 0,
+                "pending_review": 0,
+                "approved": 0,
+                "compliance_issues": 0,
+                "rejected": 0,
+            }
+
+            for invite in invites:
+                derived_status, has_issue, expired_creds = _project_member_status(invite)
+
+                totals["total_members"] += 1
+
+                if derived_status == "Not Submitted":
+                    totals["not_submitted"] += 1
+
+                elif derived_status == "Submitted":
+                    totals["pending_review"] += 1
+
+                elif derived_status == "Approved":
+                    totals["approved"] += 1
+
+                elif derived_status == "Approved - Compliance Issue":
+                    totals["compliance_issues"] += 1
+
+                elif derived_status == "Rejected":
+                    totals["rejected"] += 1
+
+            status_bar = {
+                "not_submitted_percent": 0,
+                "pending_review_percent": 0,
+                "approved_percent": 0,
+                "compliance_percent": 0,
+            }
+
+            if totals["total_members"] > 0:
+                status_bar["not_submitted_percent"] = int(
+                    (totals["not_submitted"] / totals["total_members"]) * 100
+                )
+                status_bar["pending_review_percent"] = int(
+                    (totals["pending_review"] / totals["total_members"]) * 100
+                )
+                status_bar["approved_percent"] = int(
+                    (totals["approved"] / totals["total_members"]) * 100
+                )
+                status_bar["compliance_percent"] = int(
+                    (totals["compliance_issues"] / totals["total_members"]) * 100
+                )
+
+            start_date = project.start_date
+            end_date = project.end_date
+
+            if end_date:
+                total_days = max((end_date - start_date).days, 1)
+                elapsed_days = max(min((today - start_date).days, total_days), 0)
+                remaining_days = max((end_date - today).days, 0)
+                progress_percent = int((elapsed_days / total_days) * 100)
+            else:
+                total_days = None
+                elapsed_days = max((today - start_date).days, 0)
+                remaining_days = None
+                progress_percent = None
+
+            dashboard_project_cards.append({
+                "project": project,
+                "totals": totals,
+                "status_bar": status_bar,
+                "timeline": {
+                    "start_date": start_date,
+                    "end_date": end_date,
+                    "total_days": total_days,
+                    "elapsed_days": elapsed_days,
+                    "remaining_days": remaining_days,
+                    "progress_percent": progress_percent,
+                },
             })
-    
+
+    project_member_issues = []
+
+    if _is_admin_or_manager(request.user):
+        project_invites = (
+            ProjectInvite.objects
+            .select_related(
+                "project",
+                "project_role",
+                "project_role__required_form",
+                "user",
+            )
+            .prefetch_related("user__credentials")
+            .order_by("project__title", "project_role__title", "user__first_name", "user__last_name")
+        )
+
+        for invite in project_invites:
+            derived_status, has_issue, expired_creds = _project_member_status(invite)
+
+            required_form = invite.project_role.required_form
+            latest_submission = None
+
+            if required_form:
+                latest_submission = (
+                    FormSubmission.objects
+                    .filter(
+                        form=required_form,
+                        user=invite.user
+                    )
+                    .order_by("-submitted_at")
+                    .first()
+                )
+
+            problems = []
+            primary_problem = None
+
+            if invite.status != "completed":
+                problems.append("Required form not submitted")
+                primary_problem = "not_submitted"
+
+            elif invite.review_status == "pending_review":
+                problems.append("Submitted but not approved")
+                primary_problem = "pending_review"
+
+            elif invite.review_status == "rejected":
+                problems.append("Submission rejected")
+                primary_problem = "rejected"
+
+            if has_issue:
+                credential_names = ", ".join([cred.title for cred in expired_creds])
+                problems.append(f"Compliance issue: expired {credential_names}")
+
+                if primary_problem is None:
+                    primary_problem = "compliance"
+
+            if problems:
+                project_member_issues.append({
+                    "invite": invite,
+                    "project": invite.project,
+                    "user": invite.user,
+                    "role": invite.project_role.title,
+                    "required_form": required_form,
+                    "submission": latest_submission,
+                    "problems": problems,
+                    "primary_problem": primary_problem,
+                })
+
     context = {
-        'users_with_expired': users_with_expired,
+        "dashboard_project_cards": dashboard_project_cards,
+        "project_member_issues": project_member_issues,
     }
-    return render(request, 'dashboard.html', context)
+
+    return render(request, "dashboard.html", context)
 
 
 
@@ -78,8 +238,26 @@ def view_form(request, pk):
 
 @login_required
 def personnel(request):
+    search_query = request.GET.get("q", "").strip()
+
     users = CustomUser.objects.all().order_by("first_name", "last_name")
-    return render(request, 'personnel.html', {"users": users})
+
+    if search_query:
+        users = users.filter(
+            Q(first_name__icontains=search_query) |
+            Q(last_name__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(phone_number__icontains=search_query)
+        )
+
+    return render(
+        request,
+        "personnel.html",
+        {
+            "users": users,
+            "search_query": search_query,
+        },
+    )
 
 
 @login_required
@@ -538,6 +716,8 @@ def edit_user_profile(request, pk):
         user_obj.last_name = request.POST.get('last_name')
         user_obj.email = request.POST.get('email')
         user_obj.phone_number = request.POST.get('phone_number')
+        if request.FILES.get("profile_picture"):
+            user_obj.profile_picture = request.FILES["profile_picture"]
         try:
             with transaction.atomic():
                 user_obj.save()

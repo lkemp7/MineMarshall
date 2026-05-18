@@ -5,12 +5,23 @@
     <div class="w-40 h-40 sm:w-60 sm:h-60
                 rounded-full ring ring-[#F79327] ring-offset-base-100 ring-offset-2
                 bg-base-200 overflow-hidden grid place-items-center leading-none">
-      <svg xmlns="http://www.w3.org/2000/svg"
-           viewBox="0 0 24 24"
-           class="w-16 h-16 sm:w-24 sm:h-24 opacity-70 block"
-           fill="currentColor" aria-hidden="true">
-        <path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5Z"/>
-      </svg>
+
+      {% if user_obj.profile_picture %}
+        <img
+          src="{{ user_obj.profile_picture.url }}"
+          alt="{{ user_obj.first_name }} {{ user_obj.last_name }} profile picture"
+          class="w-full h-full object-cover"
+          style="object-position: center 35%;"
+        />
+      {% else %}
+        <svg xmlns="http://www.w3.org/2000/svg"
+             viewBox="0 0 24 24"
+             class="w-16 h-16 sm:w-24 sm:h-24 opacity-70 block"
+             fill="currentColor" aria-hidden="true">
+          <path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5Z"/>
+        </svg>
+      {% endif %}
+
     </div>
   </div>
 {% endblock %}
@@ -237,7 +248,12 @@
     <div class="modal-box max-w-2xl">
       <h3 class="font-bold text-lg mb-4">Edit Profile</h3>
       <div id="edit-profile-toast"></div>
-        <form hx-post="{% url 'edit_user_profile' user_obj.pk %}" hx-target="#edit-profile-toast" hx-swap="innerHTML">
+        <form
+          hx-post="{% url 'edit_user_profile' user_obj.pk %}"
+          hx-target="#edit-profile-toast"
+          hx-swap="innerHTML"
+          enctype="multipart/form-data"
+        >
         {% csrf_token %}
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -259,6 +275,26 @@
           <div class="form-control">
             <label class="label"><span class="label-text">Phone Number</span></label>
             <input type="text" name="phone_number" value="{{ user_obj.phone_number }}" class="input input-bordered" />
+          </div>
+
+          <div class="form-control md:col-span-2">
+            <label class="label"><span class="label-text">Profile Picture</span></label>
+            <input
+              type="file"
+              name="profile_picture"
+              accept="image/*"
+              class="file-input file-input-bordered w-full"
+            />
+            {% if user_obj.profile_picture %}
+              <div class="mt-2">
+                <span class="text-sm opacity-70">Current image:</span>
+                <img
+                  src="{{ user_obj.profile_picture.url }}"
+                  alt="Current profile picture"
+                  class="mt-2 w-20 h-20 rounded-full object-cover border border-base-300"
+                />
+              </div>
+            {% endif %}
           </div>
 
           {% if user_obj.worker_profile %}

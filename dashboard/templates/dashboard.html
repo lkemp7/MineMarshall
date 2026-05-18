@@ -1,87 +1,322 @@
-{% extends "base.html" %} {% block content %}
-<div class="max-w-6xl mx-auto">
-  <h1 class="text-4xl text-[#F79327] mb-6">Dashboard</h1>
+{% extends "base.html" %}
 
-  {% if users_with_expired %}
-  <div class="alert mb-6 bg-[#F79327] bg-opacity-20 border-[#F79327]">
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      class="stroke-current shrink-0 h-6 w-6 text-[#F79327]"
-      fill="none"
-      viewBox="0 0 24 24"
-    >
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-      />
-    </svg>
-    <span class="text-[#F79327]"
-      ><strong>{{ users_with_expired|length }}</strong> user(s) with expired
-      credentials</span
-    >
+{% block content %}
+<div class="max-w-7xl mx-auto">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-4xl text-[#F79327]">Dashboard</h1>
   </div>
 
-  <div class="space-y-4">
-    {% for item in users_with_expired %}
-    <div class="card bg-base-200">
-      <div class="card-body">
-        <div class="flex items-center justify-between">
-          <h2 class="card-title">
-            <a
-              href="{% url 'user_profile' item.user.id %}"
-              class="link link-hover"
-            >
-              {{ item.user.first_name }} {{ item.user.last_name }}
-            </a>
-          </h2>
-          <span class="badge badge-error"
-            >{{ item.expired_credentials.count }} Expired</span
-          >
-        </div>
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
-        <div class="overflow-x-auto mt-2">
-          <table class="table table-compact w-full">
-            <thead>
-              <tr>
-                <th>Credential</th>
-                <th>Expiry Date</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for cred in item.expired_credentials %}
-              <tr>
-                <td>{{ cred.title }}</td>
-                <td>{{ cred.expiry_date|date:"Y-m-d" }}</td>
-                <td><span class="badge badge-error">Expired</span></td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+    <!-- Left-side project overview panel -->
+    <div class="xl:col-span-2">
+      <div class="card bg-base-200 shadow-sm">
+        <div class="card-body p-5">
+          <div class="flex items-start justify-between gap-3 mb-2">
+            <div>
+              <h2 class="card-title text-[#F79327]">Project Overview</h2>
+              <p class="text-sm opacity-70">
+                Timeline progress and submission status by project
+              </p>
+            </div>
+          </div>
+
+          <div class="max-h-[calc(100vh-14rem)] overflow-y-auto pr-2 space-y-4">
+            {% for card in dashboard_project_cards %}
+              <a
+                href="{% url 'metrics' %}?project={{ card.project.id }}"
+                class="block rounded-xl bg-base-100 border border-base-300 p-5 hover:border-[#F79327] transition"
+              >
+                <div class="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 class="text-lg font-semibold">
+                      {{ card.project.title }}
+                    </h3>
+
+                    <p class="text-xs opacity-70 mt-1">
+                      {% if card.timeline.end_date %}
+                        {{ card.timeline.start_date|date:"Y-m-d" }} → {{ card.timeline.end_date|date:"Y-m-d" }}
+                      {% else %}
+                        Started {{ card.timeline.start_date|date:"Y-m-d" }} • Indefinite
+                      {% endif %}
+                    </p>
+                  </div>
+
+                  <div class="text-right">
+                    {% if card.timeline.end_date %}
+                      <div class="text-2xl font-bold text-[#F79327]">
+                        {{ card.timeline.remaining_days }}
+                      </div>
+                      <div class="text-xs opacity-70">
+                        days remaining
+                      </div>
+                    {% else %}
+                      <div class="text-2xl font-bold text-[#F79327]">
+                        {{ card.timeline.elapsed_days }}
+                      </div>
+                      <div class="text-xs opacity-70">
+                        days active
+                      </div>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <!-- Timeline progress -->
+                <div class="mt-4">
+                  {% if card.timeline.end_date %}
+                    <div class="flex items-center justify-between text-sm mb-1">
+                      <span class="opacity-70">Project Timeline</span>
+                      <span class="font-semibold">
+                        {{ card.timeline.progress_percent }}% through
+                      </span>
+                    </div>
+
+                    <progress
+                      class="progress progress-primary w-full"
+                      value="{{ card.timeline.progress_percent }}"
+                      max="100"
+                    ></progress>
+                  {% else %}
+                    <div class="text-sm opacity-70">
+                      Project has no end date.
+                    </div>
+                  {% endif %}
+                </div>
+
+                <!-- Status distribution -->
+                <div class="mt-5">
+                  <div class="flex items-center justify-between text-sm mb-2">
+                    <span class="opacity-70">Status Distribution</span>
+                    <span class="font-semibold">
+                      {{ card.totals.total_members }} member{% if card.totals.total_members != 1 %}s{% endif %}
+                    </span>
+                  </div>
+
+                  <div class="w-full rounded-2xl overflow-hidden bg-base-300 h-7 flex">
+                    {% if card.status_bar.not_submitted_percent > 0 %}
+                      <div
+                        class="h-7 bg-warning flex items-center justify-center text-xs text-black font-semibold"
+                        style="width: {{ card.status_bar.not_submitted_percent }}%"
+                      >
+                        {% if card.status_bar.not_submitted_percent >= 10 %}
+                          {{ card.status_bar.not_submitted_percent }}%
+                        {% endif %}
+                      </div>
+                    {% endif %}
+
+                    {% if card.status_bar.pending_review_percent > 0 %}
+                      <div
+                        class="h-7 bg-info flex items-center justify-center text-xs text-black font-semibold"
+                        style="width: {{ card.status_bar.pending_review_percent }}%"
+                      >
+                        {% if card.status_bar.pending_review_percent >= 10 %}
+                          {{ card.status_bar.pending_review_percent }}%
+                        {% endif %}
+                      </div>
+                    {% endif %}
+
+                    {% if card.status_bar.approved_percent > 0 %}
+                      <div
+                        class="h-7 bg-success flex items-center justify-center text-xs text-white font-semibold"
+                        style="width: {{ card.status_bar.approved_percent }}%"
+                      >
+                        {% if card.status_bar.approved_percent >= 10 %}
+                          {{ card.status_bar.approved_percent }}%
+                        {% endif %}
+                      </div>
+                    {% endif %}
+
+                    {% if card.status_bar.compliance_percent > 0 %}
+                      <div
+                        class="h-7 bg-error flex items-center justify-center text-xs text-white font-semibold"
+                        style="width: {{ card.status_bar.compliance_percent }}%"
+                      >
+                        {% if card.status_bar.compliance_percent >= 10 %}
+                          {{ card.status_bar.compliance_percent }}%
+                        {% endif %}
+                      </div>
+                    {% endif %}
+                  </div>
+
+                  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-sm">
+                    <div class="rounded-lg bg-base-200 p-3">
+                      <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded bg-warning"></div>
+                        <span class="opacity-70">Not Submitted</span>
+                      </div>
+                      <div class="font-bold text-lg mt-1">
+                        {{ card.totals.not_submitted }}
+                      </div>
+                    </div>
+
+                    <div class="rounded-lg bg-base-200 p-3">
+                      <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded bg-info"></div>
+                        <span class="opacity-70">Pending Review</span>
+                      </div>
+                      <div class="font-bold text-lg mt-1">
+                        {{ card.totals.pending_review }}
+                      </div>
+                    </div>
+
+                    <div class="rounded-lg bg-base-200 p-3">
+                      <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded bg-success"></div>
+                        <span class="opacity-70">Approved</span>
+                      </div>
+                      <div class="font-bold text-lg mt-1">
+                        {{ card.totals.approved }}
+                      </div>
+                    </div>
+
+                    <div class="rounded-lg bg-base-200 p-3">
+                      <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded bg-error"></div>
+                        <span class="opacity-70">Compliance</span>
+                      </div>
+                      <div class="font-bold text-lg mt-1">
+                        {{ card.totals.compliance_issues }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </a>
+            {% empty %}
+              <div class="rounded-xl bg-base-100 border border-base-300 p-5">
+                <div class="font-semibold">No projects found</div>
+                <p class="text-sm opacity-70 mt-1">
+                  Create a project to start tracking project metrics.
+                </p>
+              </div>
+            {% endfor %}
+          </div>
         </div>
       </div>
     </div>
-    {% endfor %}
+
+    <!-- Right-side project attention panel -->
+    {% if request.user.role == 'admin' or request.user.role == 'manager' %}
+    <aside class="xl:col-span-1">
+      <div class="card bg-base-200 shadow-sm sticky top-6">
+        <div class="card-body p-5">
+          <div class="flex items-start justify-between gap-3 mb-2">
+            <div>
+              <h2 class="card-title text-[#F79327]">Project Attention</h2>
+              <p class="text-sm opacity-70">
+                Members with form or compliance issues
+              </p>
+            </div>
+
+            <a
+              href="{% url 'metrics' %}"
+              class="btn btn-sm btn-outline border-[#F79327] text-[#F79327] hover:bg-[#F79327] hover:text-white"
+            >
+              Metrics
+            </a>
+          </div>
+
+          <div class="max-h-[calc(100vh-14rem)] overflow-y-auto pr-2 space-y-3">
+            {% for issue in project_member_issues %}
+              <a
+                {% if issue.primary_problem == "pending_review" and issue.submission %}
+                  href="{% url 'view_submission' issue.submission.id %}"
+                {% else %}
+                  href="{% url 'metrics' %}?project={{ issue.project.id }}"
+                {% endif %}
+                class="block rounded-xl bg-base-100 border border-base-300 p-4 hover:border-[#F79327] transition"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <div class="font-semibold">
+                      {{ issue.user.first_name }} {{ issue.user.last_name }}
+                    </div>
+                    <div class="text-xs opacity-70">
+                      {{ issue.user.email }}
+                    </div>
+                  </div>
+
+                  {% if issue.primary_problem == "not_submitted" %}
+                    <span class="badge border-0 bg-[#FFC107] text-black text-xs">
+                      Not Submitted
+                    </span>
+                  {% elif issue.primary_problem == "pending_review" %}
+                    <span class="badge border-0 bg-[#13B5EA] text-black text-xs">
+                      Pending Review
+                    </span>
+                  {% elif issue.primary_problem == "rejected" %}
+                    <span class="badge border-0 bg-[#FF5C5C] text-white text-xs">
+                      Rejected
+                    </span>
+                  {% elif issue.primary_problem == "compliance" %}
+                    <span class="badge border-0 bg-[#FF5C5C] text-white text-xs">
+                      Compliance Issue
+                    </span>
+                  {% else %}
+                    <span class="badge border-0 bg-base-300 text-xs">
+                      Action
+                    </span>
+                  {% endif %}
+                </div>
+
+                <div class="mt-3 space-y-1 text-sm">
+                  <div>
+                    <span class="opacity-60">Project:</span>
+                    <span class="font-medium">{{ issue.project.title }}</span>
+                  </div>
+
+                  <div>
+                    <span class="opacity-60">Role:</span>
+                    <span class="font-medium">{{ issue.role }}</span>
+                  </div>
+
+                  <div>
+                    <span class="opacity-60">Required Form:</span>
+                    <span class="font-medium">
+                      {% if issue.required_form %}
+                        {{ issue.required_form.title }}
+                      {% else %}
+                        No form assigned
+                      {% endif %}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="mt-3 flex flex-wrap gap-1">
+                  {% for problem in issue.problems %}
+                    {% if problem == "Required form not submitted" %}
+                      <span class="badge border-0 bg-[#FFC107] text-black text-xs">
+                        {{ problem }}
+                      </span>
+                    {% elif problem == "Submitted but not approved" %}
+                      <span class="badge border-0 bg-[#13B5EA] text-black text-xs">
+                        {{ problem }}
+                      </span>
+                    {% elif problem == "Submission rejected" %}
+                      <span class="badge border-0 bg-[#FF5C5C] text-white text-xs">
+                        {{ problem }}
+                      </span>
+                    {% else %}
+                      <span class="badge border-0 bg-[#FF5C5C] text-white text-xs">
+                        {{ problem }}
+                      </span>
+                    {% endif %}
+                  {% endfor %}
+                </div>
+              </a>
+
+            {% empty %}
+              <div class="rounded-xl bg-base-100 border border-base-300 p-4">
+                <div class="font-semibold text-success">No project issues</div>
+                <p class="text-sm opacity-70 mt-1">
+                  All project members are currently submitted, approved, and compliant.
+                </p>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </aside>
+    {% endif %}
   </div>
-  {% else %}
-  <div class="alert alert-success">
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      class="stroke-current shrink-0 h-6 w-6"
-      fill="none"
-      viewBox="0 0 24 24"
-    >
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-      />
-    </svg>
-    <span>All credentials are up to date!</span>
-  </div>
-  {% endif %}
 </div>
 {% endblock %}
