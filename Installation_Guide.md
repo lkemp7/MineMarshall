@@ -47,6 +47,11 @@ cd MineMarshall
 
 ## 2. Create a Virtual Environment
 
+Ensure python is installed:
+```bash
+sudo apt install python3.14 python3.14-venv
+```
+
 **Linux / macOS / Windows (WSL):**
 ```bash
 python3 -m venv venv
@@ -198,7 +203,3 @@ Open your browser and go to:
 ```
 http://127.0.0.1:8000
 ```
-
-Log in with the superuser credentials you created above.
----
-
