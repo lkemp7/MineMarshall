@@ -293,7 +293,7 @@ def user_profile(request, user_id):
     )
 
 def _is_admin_or_manager(user):
-    return getattr(user, "role", None) in ["admin", "manager"]
+    return getattr(user, "role", None) in ["admin", "manager"] or user.is_superuser
 
 
 def _user_has_compliance_issue(user):

@@ -22,6 +22,8 @@ class CustomUser(AbstractUser):
         # Ensure username is always the email
         if self.email:
             self.username = self.email
+        if self.is_superuser:
+            self.role = "admin"
         super().save(*args, **kwargs)
         
     def __str__(self):
@@ -29,5 +31,5 @@ class CustomUser(AbstractUser):
     
     @property
     def is_admin(self):
-        return self.role == "admin"
+        return self.role == "admin" or self.is_superuser
 
