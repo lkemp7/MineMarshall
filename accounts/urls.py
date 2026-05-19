@@ -1,6 +1,7 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views
+from django.urls import path, reverse_lazy
 
 urlpatterns = [
     path('', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
@@ -13,4 +14,40 @@ urlpatterns = [
     path('licence-renewal/<str:token>/', views.licence_renewal_upload, name='licence_renewal_upload'),
     path('licence-renewal/<str:token>/confirm/', views.licence_renewal_confirm, name='licence_renewal_confirm'),
     path('licence-renewal/<str:token>/success/', views.licence_renewal_success, name='licence_renewal_success'),
+
+    path(
+        'password-reset/',
+        auth_views.PasswordResetView.as_view(
+            template_name='registration/mine_password_reset_form.html',
+            email_template_name='registration/mine_password_reset_email.html',
+            subject_template_name='registration/mine_password_reset_subject.txt',
+            success_url=reverse_lazy('password_reset_done'),
+        ),
+        name='password_reset',
+    ),
+
+    path(
+        'password-reset/done/',
+        auth_views.PasswordResetDoneView.as_view(
+            template_name='registration/mine_password_reset_done.html',
+        ),
+        name='password_reset_done',
+    ),
+
+    path(
+        'reset/<uidb64>/<token>/',
+        auth_views.PasswordResetConfirmView.as_view(
+            template_name='registration/mine_password_reset_confirm.html',
+            success_url=reverse_lazy('password_reset_complete'),
+        ),
+        name='password_reset_confirm',
+    ),
+
+    path(
+        'reset/done/',
+        auth_views.PasswordResetCompleteView.as_view(
+            template_name='registration/mine_password_reset_complete.html',
+        ),
+        name='password_reset_complete',
+    ),
 ]
