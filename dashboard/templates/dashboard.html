@@ -1,4 +1,7 @@
 {% extends "base.html" %}
+{# Dashboard home page — context: dashboard_project_cards, project_member_issues #}
+{# dashboard_project_cards: list of {project, totals, status_bar, timeline} dicts #}
+{# project_member_issues: list of invite rows with problems and primary_problem key #}
 
 {% block content %}
 <div class="max-w-7xl mx-auto">
@@ -8,7 +11,7 @@
 
   <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
-    <!-- Left-side project overview panel -->
+    {# ── Left panel: project overview cards ─────────────────────────────────── #}
     <div class="xl:col-span-2">
       <div class="card bg-base-200 shadow-sm">
         <div class="card-body p-5">
@@ -61,7 +64,7 @@
                   </div>
                 </div>
 
-                <!-- Timeline progress -->
+                {# Timeline progress bar — only shown for projects with an end date. #}
                 <div class="mt-4">
                   {% if card.timeline.end_date %}
                     <div class="flex items-center justify-between text-sm mb-1">
@@ -83,7 +86,7 @@
                   {% endif %}
                 </div>
 
-                <!-- Status distribution -->
+                {# Stacked status bar: warning=not submitted, info=pending, success=approved, error=compliance #}
                 <div class="mt-5">
                   <div class="flex items-center justify-between text-sm mb-2">
                     <span class="opacity-70">Status Distribution</span>
@@ -194,7 +197,7 @@
       </div>
     </div>
 
-    <!-- Right-side project attention panel -->
+    {# ── Right panel: project attention (issues requiring admin action) ─────── #}
     {% if request.user.role == 'admin' or request.user.role == 'manager' %}
     <aside class="xl:col-span-1">
       <div class="card bg-base-200 shadow-sm sticky top-6">

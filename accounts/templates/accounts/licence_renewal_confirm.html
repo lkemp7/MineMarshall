@@ -1,4 +1,7 @@
 {% extends "onboarding_base.html" %}
+{# Licence renewal confirmation step — context: renewal_request, credential, ocr_data #}
+{# Shows OCR-extracted values alongside the current credential record for comparison. #}
+{# POST with "confirm" applies the new details; "reupload" discards and starts over. #}
 
 {% block content %}
 <div class="max-w-2xl mx-auto bg-base-100 shadow-lg rounded-xl p-8">

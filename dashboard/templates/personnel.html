@@ -1,4 +1,8 @@
-{% extends 'base.html' %} {% block content %}
+{% extends 'base.html' %}
+{# Personnel list page — context: users (QuerySet), search_query (str) #}
+{# Provides search, an Add User modal (admin/manager only), and an Induction modal. #}
+
+{% block content %}
 
 <div id="contractor-list">
   <div class="flex items-center justify-between mb-6">
@@ -97,7 +101,8 @@
   {% endif %}
 </div>
 
-<!-- Add User Modal -->
+{# ── Add User Modal ─────────────────────────────────────────────────────────── #}
+{# Creates a user immediately with a password (no onboarding email flow). #}
 {% if request.user.role == 'admin' or request.user.role == 'manager' %}
 <dialog id="addUserModal" class="modal">
   <div class="modal-box max-w-2xl">
@@ -189,6 +194,8 @@
 </dialog>
 {% endif %}
 
+{# ── Induction Modal ─────────────────────────────────────────────────────────── #}
+{# Creates an inactive user and sends a setup email — the worker sets their own password. #}
 {% if request.user.role == 'admin' or request.user.role == 'manager' %}
 <dialog id="inductionModal" class="modal">
   <div class="modal-box max-w-2xl">

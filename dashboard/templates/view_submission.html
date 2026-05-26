@@ -1,4 +1,7 @@
 {% extends "base.html" %}
+{# Read-only submission review page — context: submission, answers (Answer queryset). #}
+{# Linked from metrics table and project_submissions. Admin/manager access only (enforced in view). #}
+{# answers may include file uploads (answer_file) or text (answer_text), rendered accordingly. #}
 {% block content %}
     <div class="max-w-4xl mx-auto space-y-6">
         <div class="flex items-center justify-between">

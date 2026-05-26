@@ -122,6 +122,23 @@ def create_or_update_user_from_post(data):
     return user
 
 def get_current_licence_reminder_band(credential):
+    """Return the reminder band string that applies to the credential today.
+
+    Reminder bands are mutually exclusive time windows before expiry:
+      - "6_month":  31 – 183 days remaining
+      - "1_month":  15 – 30 days remaining
+      - "2_week":   8 – 14 days remaining
+      - "1_week":   4 – 7 days remaining
+      - "3_day":    0 – 3 days remaining
+      - "expired":  already past the expiry date
+
+    Args:
+        credential (Credential): The credential to evaluate.
+
+    Returns:
+        str | None: The band key, or None if the credential has no expiry date
+            or falls outside all defined bands (more than 6 months away).
+    """
     if not credential.expiry_date:
         return None
 
@@ -132,7 +149,7 @@ def get_current_licence_reminder_band(credential):
     if days_until_expiry < 0:
         return "expired"
 
-    # Current active band only
+    # Return the single active band for today's date
     if 30 < days_until_expiry <= 183:
         return "6_month"
     if 14 < days_until_expiry <= 30:
@@ -146,7 +163,19 @@ def get_current_licence_reminder_band(credential):
 
     return None
 
+
 def is_driver_licence_credential(credential):
+    """Return True if the credential title matches "driver licence" (case-insensitive).
+
+    Only driver licences trigger the automated renewal email flow; other
+    credential types are not handled by the reminder system.
+
+    Args:
+        credential (Credential): The credential to check.
+
+    Returns:
+        bool: True if the title is "Driver Licence", False otherwise.
+    """
     if not credential.title:
         return False
 
@@ -154,6 +183,18 @@ def is_driver_licence_credential(credential):
 
 
 def has_notification_been_sent(credential, reminder_band):
+    """Return True if a CredentialNotification already exists for this band.
+
+    Prevents the management command from sending duplicate reminder emails when
+    it runs multiple times within the same reminder window.
+
+    Args:
+        credential (Credential): The credential being checked.
+        reminder_band (str): The reminder band key (e.g. "1_month").
+
+    Returns:
+        bool: True if a notification record exists for this credential/band pair.
+    """
     return CredentialNotification.objects.filter(
         credential=credential,
         reminder_band=reminder_band,
@@ -161,7 +202,18 @@ def has_notification_been_sent(credential, reminder_band):
 
 
 def get_eligible_licence_reminder_band(credential):
+    """Return the reminder band for a driver's licence that needs a notification sent.
 
+    Combines the three eligibility checks: credential must be a driver licence,
+    must currently fall within a reminder band, and must not have already been
+    notified for that band.
+
+    Args:
+        credential (Credential): The credential to evaluate.
+
+    Returns:
+        str | None: The eligible band key, or None if no notification should be sent.
+    """
     if not is_driver_licence_credential(credential):
         return None
 
@@ -174,7 +226,17 @@ def get_eligible_licence_reminder_band(credential):
 
     return reminder_band
 
+
 def create_licence_renewal_request(credential, reminder_band):
+    """Create a new LicenceRenewalRequest with a secure random token.
+
+    Args:
+        credential (Credential): The expiring driver's licence credential.
+        reminder_band (str): The band that triggered this renewal request.
+
+    Returns:
+        LicenceRenewalRequest: The newly created renewal request record.
+    """
     return LicenceRenewalRequest.objects.create(
         credential=credential,
         user=credential.user,

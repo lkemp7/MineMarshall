@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{# Forms management page — context: forms (QuerySet[Form], created by request.user) #}
+{# Provides a list of existing forms, a view modal (HTMX), and a form builder modal. #}
 
 {% block content %}
 <div class="max-w-6xl mx-auto">
@@ -42,6 +44,8 @@
   </p>
   {% endif %}
 
+  {# ── View Form Modal ─────────────────────────────────────────────────────── #}
+  {# Content is loaded via HTMX GET to view_form; shows a spinner while loading. #}
   <dialog id="viewFormModal" class="modal">
     <div class="modal-box w-11/12 max-w-4xl h-[80vh] flex flex-col">
       <div class="flex-1 overflow-y-auto pr-2" id="viewFormModalContent">
@@ -58,6 +62,8 @@
     </form>
   </dialog>
 
+  {# ── Create / Edit Form Modal ────────────────────────────────────────────── #}
+  {# Doubles as the edit modal: loadEditForm() rewires the form action and pre-fills fields. #}
   {% if request.user.role == 'admin' or request.user.role == 'manager' %}
   <dialog id="createFormModal" class="modal">
     <div class="modal-box w-11/12 max-w-4xl h-[80vh] flex flex-col">
@@ -120,10 +126,13 @@
   {% endif %}
 
   <script>
+    /* Remove the closest .question-card ancestor from the DOM. */
     function removeQuestion(button) {
       button.closest('.question-card').remove();
     }
 
+    /* Show/hide the options textarea and licence config sections based on question type.
+       Called by the type <select> onchange attribute injected by add_question_field. */
     function toggleOptions(select, questionNum) {
       const optionsDiv = document.getElementById(`options-${questionNum}`);
       const licenceDiv = document.getElementById(`licence-config-${questionNum}`);
@@ -142,11 +151,15 @@
       }
     }
 
+    /* Show or hide the custom label input when "Additional Licence" is selected. */
     function toggleLicenceCustom(select, questionNum) {
       const customDiv = document.getElementById(`licence-custom-${questionNum}`);
       customDiv.style.display = select.value === 'additional' ? 'block' : 'none';
     }
 
+    /* Load existing form data into the create modal for editing.
+       Fetches question data from edit_form_data, adds a question card for each,
+       then rewires the form action to the update endpoint. */
     async function loadEditForm(formId) {
       document.getElementById('viewFormModal').close();
 
@@ -165,6 +178,7 @@
       document.getElementById('form-questions').innerHTML = '';
 
       for (const question of data.questions) {
+        /* Fetch a blank question card fragment, then pre-fill it with the saved values. */
         const html = await fetch('/dashboard/forms/add-question/').then(r => r.text());
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = html.trim();
@@ -186,9 +200,11 @@
         }
       }
 
+      /* Small delay prevents the modal opening before the DOM has settled. */
       setTimeout(() => document.getElementById('createFormModal').showModal(), 100);
     }
 
+    /* Reset the modal back to "create" mode when it is closed after an edit. */
     function resetCreateModal() {
       document.querySelector('#createFormModal h3').textContent = 'Create New Form';
       const form = document.getElementById('formBuilderForm');

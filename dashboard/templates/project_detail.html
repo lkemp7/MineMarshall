@@ -1,4 +1,8 @@
 {% extends "base.html" %}
+{# Project admin management page — context: project, forms, users, project_documents #}
+{# Provides role management, user invitations, document uploads, and submission navigation. #}
+{# Role cards use a cycling border colour (4 colours) based on forloop.counter0 modulo. #}
+
 {% block content %}
 
 <div class="max-w-7xl mx-auto space-y-6">

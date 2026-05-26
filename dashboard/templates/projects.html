@@ -1,4 +1,7 @@
 {% extends "base.html" %}
+{# Admin/manager project list — context: projects (QuerySet[Project] with roles prefetched) #}
+{# Includes a Create Project modal. New projects redirect to project_detail for role setup. #}
+
 {% block content %}
 
 <div class="max-w-6xl mx-auto">

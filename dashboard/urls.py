@@ -1,3 +1,10 @@
+"""URL configuration for the dashboard app.
+
+All routes are mounted under the prefix defined in minemarshall/urls.py (currently '').
+HTMX partial endpoints (add_question_field, save_form_draft) are included here alongside
+full-page views — they return fragments/204 rather than complete HTML documents.
+"""
+
 from django.urls import path
 from . import views
 

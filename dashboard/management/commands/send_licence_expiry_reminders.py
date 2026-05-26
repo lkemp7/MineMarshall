@@ -11,9 +11,24 @@ from dashboard.services import (
 
 
 class Command(BaseCommand):
+    """Management command to send driver's licence expiry reminder emails.
+
+    Iterates over all Credential records and uses the service layer to determine
+    whether a reminder is due. Creates a LicenceRenewalRequest (with a unique
+    token) and emails the worker a secure renewal link. Records a
+    CredentialNotification so that duplicate emails are not sent within the
+    same reminder band.
+
+    Run on a schedule (e.g. daily cron) via:
+        python manage.py send_licence_expiry_reminders
+
+    Use --dry-run to preview which emails would be sent without side effects.
+    """
+
     help = "Scan Driver Licence credentials and send expiry reminder emails."
 
     def add_arguments(self, parser):
+        """Register the optional --dry-run flag."""
         parser.add_argument(
             "--dry-run",
             action="store_true",
@@ -21,12 +36,19 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        """Main entry point: iterate credentials, check eligibility, send emails.
+
+        Args:
+            *args: Unused positional arguments passed by Django.
+            **options: Parsed command-line options (dry_run: bool).
+        """
         dry_run = options["dry_run"]
 
         credentials = Credential.objects.select_related("user").all()
         reminders_sent = 0
 
         for credential in credentials:
+            # get_eligible_licence_reminder_band returns None if no reminder is due
             reminder_band = get_eligible_licence_reminder_band(credential)
             if not reminder_band:
                 continue
@@ -40,6 +62,7 @@ class Command(BaseCommand):
                 )
                 continue
 
+            # Create the renewal request with a secure token for the email link
             renewal_request = create_licence_renewal_request(credential, reminder_band)
             renewal_url = build_licence_renewal_url(renewal_request)
 
@@ -64,6 +87,7 @@ class Command(BaseCommand):
                 fail_silently=False,
             )
 
+            # Record that this band has been notified to prevent duplicate sends
             CredentialNotification.objects.create(
                 credential=credential,
                 reminder_band=reminder_band,

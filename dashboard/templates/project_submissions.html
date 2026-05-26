@@ -1,4 +1,7 @@
 {% extends "base.html" %}
+{# Project submissions review page — context: project, role_sections #}
+{# role_sections: list of {role, rows} where each row has invite, user, submission, derived_status #}
+{# Approve/reject actions POST to update_project_invite_review_status. #}
 
 {% block content %}
 <div class="max-w-7xl mx-auto space-y-6">

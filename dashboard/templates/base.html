@@ -1,4 +1,6 @@
 {% load static %}
+{# Base layout template — all authenticated pages extend this. #}
+{# Provides: <head> with CDN assets, fixed sidebar, main content area, and toast notifications. #}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -10,7 +12,7 @@
       rel="icon"
       type="image/png"
       sizes="96x96"
-      href="{% static 'favicon-96x96-1.png' %}"
+      href="{% static 'img/favicon-96x96-1.png' %}"
     />
     <link
       href="https://cdn.jsdelivr.net/npm/daisyui@4.12.22/dist/full.min.css"
@@ -25,6 +27,7 @@
     ></script>
 
     <style>
+      {# Override DaisyUI's default primary colour inside the sidebar to match the OreFox orange brand. #}
       aside .btn-primary {
         background-color: #f79327 !important;
         border-color: #f79327 !important;
@@ -38,17 +41,18 @@
     </style>
   </head>
   <body class="min-h-screen flex flex-col">
-    <!-- Make header relative so profile pages can position content inside it -->
+    {# header_extra block lets child templates inject content (e.g. profile picture) into the header. #}
     <header class="relative flex items-center p-4 border-b border-base-300">
       {% block header_extra %}{% endblock %}
       <img
-        src="{% static 'Orefox_logo.png' %}"
+        src="{% static 'img/Orefox_logo.png' %}"
         alt="Orefox Logo"
         class="w-40 h-auto object-contain ml-8"
       />
     </header>
 
     <div class="flex flex-1 min-h-0">
+      {# Fixed sidebar with navigation links and logout button. top-48 offsets below the header. #}
       <aside class="w-64 bg-base-200 p-4 fixed top-48 bottom-0 flex flex-col">
         <div class="flex-1 overflow-y-auto">{% include "sidebar.html" %}</div>
         <div class="pt-4 border-t border-base-300">
@@ -64,18 +68,24 @@
         </div>
       </aside>
       <div class="w-px bg-base-300"></div>
+      {# ml-64 pushes content right to avoid being hidden behind the fixed sidebar. #}
       <main class="flex-1 p-6 overflow-auto ml-64">
         {% block content %} {% endblock content %}
       </main>
     </div>
+
+    {# Toast notification container — messages are dismissed after 4.5 s with a fade. #}
     <div class="toast toast-top toast-center z-50" id="toast-container">
-      {% for message in messages %}    
+      {% for message in messages %}
       <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %}">
         <span>{{ message }}</span>
       </div>
       {% endfor %}
     </div>
+
   <script>
+    /* Auto-dismiss toast notifications after 4.5 s with a fade-out transition.
+       Re-runs after every HTMX swap so that HTMX-triggered messages are also dismissed. */
     function toastDismiss() {
       const container = document.getElementById('toast-container');
       if (container && container.children.length > 0) {

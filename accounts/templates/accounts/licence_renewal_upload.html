@@ -1,4 +1,7 @@
 {% extends "onboarding_base.html" %}
+{# Licence renewal upload step — context: renewal_request (LicenceRenewalRequest) #}
+{# Accessed via the tokenised link in the reminder email. No login required. #}
+{# On POST, OCR extracts the new licence details and redirects to the confirm step. #}
 
 {% block content %}
 <div class="max-w-xl mx-auto bg-base-100 shadow-lg rounded-xl p-8">

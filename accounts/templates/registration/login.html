@@ -1,18 +1,20 @@
 {% load static %}
+{# Standalone login page — does not extend base.html (no sidebar needed for unauthenticated users). #}
+{# Uses Django's built-in LoginView; on success redirects to redirect_user → dashboard. #}
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Login | MineMarshall</title>
-    <link rel="icon" type="image/png" sizes="96x96" href="{% static 'favicon-96x96-1.png' %}">
+    <link rel="icon" type="image/png" sizes="96x96" href="{% static 'img/favicon-96x96-1.png' %}">
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.22/dist/full.min.css" rel="stylesheet" type="text/css" />
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-base-200 min-h-screen flex items-center justify-center">
 
     <div class="absolute top-8 left-1/2 transform -translate-x-1/2">
-        <img src="{% static 'Orefox_logo.png' %}" alt="Orefox Logo" class=h-96>
+        <img src="{% static 'img/Orefox_logo.png' %}" alt="Orefox Logo" class=h-96>
     </div>
     <div class="card w-full max-w-md shadow-xl bg-base-100">
         <div class="card-body">

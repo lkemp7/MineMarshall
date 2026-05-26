@@ -1,242 +1,71 @@
-﻿# MineMarshall — Setup & Installation Guide
-
-
-## Windows Users: Set Up Windows Subsystem for Linux
-All Windows instructions in this guide assume you are using **WSL with Ubuntu/Debian**. PostGIS was unable to operate with Django on a native windows installation.
-
-### Install WSL2
-
-Open **PowerShell as Administrator** and run:
-
-```powershell
-wsl --install
-```
-
-When prompted, reboot your system.
-
-Once rebooted, WSL should come with Ubuntu by default, if not, you can install it with:
-
-```powershell
-wsl --install -d Ubuntu
-``` 
-
-Complete the initial setup (create a Linux username and password).
-
-> All subsequent steps in this guide should be run inside the **Ubuntu WSL terminal**, not PowerShell or Command Prompt.
-
-### Clone inside the WSL filesystem
-
-For best performance, work within the WSL filesystem rather than a Windows drive mount:
-
-```bash
-cd ~
-```
-
-Then proceed to Section 1.
-
-
-## Mac Users: Ensure Homebrew is installed
-
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-```
----
-
-## 1. Clone the Repository
-
-```bash
-git clone https://github.com/lkemp7/MineMarshall.git
-cd MineMarshall
-```
-
----
-
-## 2. Create a Virtual Environment
-
-Ensure python is installed 
-
-### Linux/WSL:
-```bash
-sudo apt install python3 python3-venv
-python3 -m venv venv
-source venv/bin/activate
-```
-You should see `(venv)` in your terminal prompt once activated.
-### Mac:
-
-```bash
-brew install python@3.12
-python3.12 -m venv venv
-source venv/bin/activate
-```
-You should see `(venv)` in your terminal prompt once activated.
-
-### After activating your virtual environment, ensure pip is updated:
-```python
-python -m pip install --upgrade pip
-```
-
-
-
----
-
-## 3. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-This installs all python packages required for the application.
-
-For the additional system packages, run:
-
-### Linux/WSL
-
-```bash
-sudo apt update
-sudo apt install -y postgresql postgresql-contrib postgis gdal-bin libgdal-dev binutils libproj-dev curl zstd
-```
-### Mac:
-```bash
-brew install postgresql postgis gdal proj zstd
-```
-## 3.1: Install ollama:
-
-### Linux/WSL:
-
-```bash
-curl -fsSL https://ollama.com/install.sh | sh
-```
-Then, install the llama 3.2:3b model
-```bash
-ollama pull llama3.2:3b
-```
-
-### Mac:
-```bash
-brew install ollama
-brew services start ollama
-```
-Then, install the llama 3.2:3b model
-
-```bash
-ollama pull llama3.2:3b
-```
-
-## 4. Set up the database
-### Linux/WSL: Connect to PostgreSQL:
-
-```bash
-sudo -u postgres psql
-```
-### Mac: Connect to PostgreSQL:
-
-```bash
-brew services start postgresql
-psql postgres
-```
-### All operating systems:
-Run each command **individually**:
-
-```sql
-CREATE DATABASE minemarshall;
-```
-```sql
-CREATE USER minemarshall_admin WITH PASSWORD 'your_password';
-```
-```sql
-GRANT ALL PRIVILEGES ON DATABASE minemarshall TO minemarshall_admin;
-```
-
-Connect to the new database:
-
-```sql
-\c minemarshall
-```
-
-Grant schema permissions:
-
-```sql
-GRANT ALL ON SCHEMA public TO minemarshall_admin;
-```
-
-Enable the PostGIS extension:
-
-```sql
-CREATE EXTENSION postgis;
-```
-
-Exit psql:
-
-```sql
-\q
-```
-
-### Verify PostGIS is active (optional)
-
-**Linux / WSL:**
-```bash
-sudo -u postgres psql -d minemarshall -c "SELECT PostGIS_Version();"
-```
-
-**macOS:**
-```bash
-psql minemarshall -c "SELECT PostGIS_Version();"
-```
-
----
-
-## 5. Configure Django Database
-
-Update the following block in the settings.py (line 80) file to match the user credentials you have just created for the database.
-
-```python
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': 'minemarshall',
-        'USER': 'minemarshall_admin',
-        'PASSWORD': 'your_password',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
-}
-```
-
----
-
-## 6. Run Database Migrations
-
-```bash
-python manage.py migrate
-```
-
-This applies all schema migrations to the database.
-
----
-
-## 7. Create a Superuser (Admin Account)
-
-```bash
-python manage.py createsuperuser
-```
-
-Follow the prompts to set an email address and password. This account will have Admin-level access in MineMarshall.
-
----
-
-## 8. Start the Development Server
-
-```bash
-python manage.py runserver
-```
-
-Open your browser and go to:
-
-```
-http://127.0.0.1:8000
-```
-
-## 9. Email Integration
-
-For the email integration, a gmail account is currently used. If you want to switch this to another service, the relevant settings are at like 147-153 of ./MineMarshall/settings.py
+﻿# MineMarshall
+
+28th August 2025 - 19th May 2026
+## PROJECT OVERVIEW
+1. MineMarshall is a people management system for mine sites, built for OreFox AI. The project scope covered the full onboarding and compliance lifecycle for mine site workers: admins invite workers via tokenised email links, workers set up accounts and submit role-specific induction forms, and the system tracks credential validity (including driver's  OCR scanning), form submission status, and project-level compliance. A metrics dashboard gives admins an at-a-glance view of all workers across projects with filterable compliance status.
+2. Demo video: https://www.notion.so/orefox/Handover-36505cef1f228091ba61e4fff5093c20
+3. Notion Page: https://www.notion.so/orefox/MineMarshal-Mine-site-People-management-system-25b05cef1f22800389e8c26b7ac3da4f
+## SET UP INSTRUCTIONS
+### Additional Packages:
+  #### Python Packages:
+  - Django==5.2.6
+  - django-environ==0.13.0
+  - easyocr==1.7.2
+  - ollama==0.6.1
+  - psycopg2-binary==2.9.12
+  #### System Packages (Linux/Windows(WSL) via apt):
+  - postgresql, postgresql-contrib, postgis, gdal-bin, libgdal-dev, binutils, lobproj-dev - database server+dependencies
+  - curl, zstd - used in Ollama installation
+  #### System Packages (MacOS via Homebrew):
+  - postgresql, postgis, gdal, proj, zstd - Equivalents of above
+  #### Ollama:
+  - Ollama with model llama3.2:3b
+### File structure list, mentioning all the files and folders added to the project and what they do.  
+  - `accounts/` — Django app for authentication and onboarding
+    - `backends.py` — Custom case-insensitive email login backend
+    - `forms.py` — User profile edit form
+    - `models.py` — CustomUser model
+    - `ocr.py` — Driver's licence OCR using easyOCR + Ollama
+    - `views.py` — Login, profile, onboarding, and licence renewal views
+    - `urls.py` — URL routes for the accounts app
+    - `admin.py` — Django admin configuration for CustomUser
+    - `templates/accounts/` — Onboarding, licence scan, and renewal templates
+    - `templates/registration/login.html` — Login page
+  - `dashboard/` — Django app for the main application
+    - `models.py` — All core models
+    - `views.py` — All main views
+    - `services.py` — Business logic for user creation and licence reminders
+    - `urls.py` — URL routes for the dashboard app
+    - `admin.py` — Django admin configuration
+    - `management/commands/send_licence_expiry_reminders.py` — Scheduled command for licence expiry emails
+    - `templates/base.html` — Base layout (sidebar, header, toast notifications)
+    - `templates/onboarding_base.html` — Simplified layout for onboarding/renewal flows
+    - `templates/dashboard.html` — Main dashboard with project cards and attention panel
+    - `templates/personnel.html` — Worker list with search, add, and induction
+    - `templates/user_profile.html` — Worker profile with credentials and submissions
+    - `templates/my_forms.html` — Form builder — create, edit, and view forms
+    - `templates/view_form.html` — Form preview
+    - `templates/metrics.html` — Project metrics and compliance dashboard
+    - `templates/projects.html` — Admin project list and create project
+    - `templates/project_detail.html` — Project roles, invites, and approval documents
+    - `templates/project_submissions.html` — Submission list with approve/reject
+    - `templates/view_submission.html` — Read-only submission review
+    - `templates/my_projects.html` — Worker-facing project and invite list
+    - `templates/project_invite_form.html` — Worker induction form with auto-save
+    - `templates/submission_detail.html` — Detailed submission view (admin only)
+    - `templates/forms/default_form.html` — Printable induction form
+    - `templates/forms/onboarding_default_form.html` — Onboarding version of the induction form
+  - `static/img/` — Orefox logo and favicon
+  - `static/json/` — Reserved for future JSON files(none used in project)
+  - `static/js/` — Reserved for future JavaScript files(no javascript files used in project)
+  - `static/css/` — Reserved for future CSS files(no css directly used in project, styling was done through TailwindCSS and DaisyUI)
+  - `MineMarshall/settings.py` — Project settings
+  - `MineMarshall/urls.py` — Root URL configuration
+  - `.env` — Environment variables and secrets
+  - `requirements.txt` — Python dependencies
+  - `MineMarshall Installation Guide.pdf/md` — Full setup and installation guide
+## Installation
+Please see MineMarshall Installation Guide.pdf for installation instructions 
+
+## Incomplete Components
+No components were left incompolete. 

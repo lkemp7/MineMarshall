@@ -1,4 +1,8 @@
 {% extends "base.html" %}
+{# User profile page — context: user_obj, licence_presets, can_edit_credentials, #}
+{# can_edit_profile, is_self_profile. #}
+{# Profile picture is injected into the header via the header_extra block. #}
+{# Edit and credential modals use HTMX to submit without full page reloads. #}
 
 {% block header_extra %}
   <div class="absolute z-20 left-72 sm:left-80 bottom-[-8rem]">

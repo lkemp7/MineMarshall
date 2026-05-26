@@ -1,4 +1,7 @@
 {% extends "base.html" %}
+{# Worker's project invites page — context: invite_rows (list of {invite, approval_documents}) #}
+{# Each row shows the invite status, review status, rejection reason, and downloadable approval docs. #}
+
 {% block content %}
 
 <div class="max-w-6xl mx-auto">
@@ -69,6 +72,7 @@
           </div>
         </div>
 
+        {# Rejection alert — shows reason and optionally a reapply button. #}
         {% if invite.review_status == 'rejected' %}
         <div class="alert alert-error mt-4">
           <div>
@@ -87,6 +91,7 @@
         </div>
         {% endif %}
 
+        {# Approval documents are only shown once the review_status is "approved". #}
         {% if invite.review_status == 'approved' and approval_documents %}
         <div class="mt-4">
           <h3 class="font-semibold mb-2">Approval Documents</h3>

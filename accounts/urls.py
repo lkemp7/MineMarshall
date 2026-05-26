@@ -1,3 +1,10 @@
+"""URL configuration for the accounts app.
+
+Mounted under the prefix defined in minemarshall/urls.py (currently 'accounts/').
+The login/logout routes use Django's built-in auth views.
+The setup-account and licence-* routes are token-gated onboarding/renewal flows.
+"""
+
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views

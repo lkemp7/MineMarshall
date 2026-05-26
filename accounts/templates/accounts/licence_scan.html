@@ -1,4 +1,7 @@
 {% extends 'onboarding_base.html' %}
+{# Licence scan step — context: invite (OnboardingInvite) #}
+{# Optional onboarding step: uploads a driver's licence image for OCR extraction. #}
+{# The step can be skipped via the "Skip this step" link. #}
 
 {% block content %}
 <div class="max-w-xl mx-auto mt-10">
@@ -20,7 +23,7 @@
       <form id="scanForm" method="post" enctype="multipart/form-data">
         {% csrf_token %}
 
-        <!-- Image upload -->
+        {# File input — accepts any image format; previewed below before upload. #}
         <div class="form-control mb-4">
           <label class="label">
             <span class="label-text font-medium">Licence Image</span>
@@ -34,7 +37,7 @@
           />
         </div>
 
-        <!-- Preview -->
+        {# Image preview — hidden until a file is selected; shown by the FileReader JS below. #}
         <div id="previewWrapper" class="hidden mb-4">
           <img id="previewImg" src="#" alt="Licence preview"
                class="rounded-lg border border-base-300 w-full max-h-56 object-contain" />
@@ -49,14 +52,14 @@
           Scan Licence
         </button>
 
-        <!-- Loading state (hidden until submit) -->
+        {# Loading spinner — shown when the form is submitted to indicate OCR is running. #}
         <div id="loadingState" class="hidden flex flex-col items-center gap-2 my-2">
           <span class="loading loading-spinner loading-md text-[#F79327]"></span>
           <span class="text-sm text-base-content/60">Reading licence… this may take a few seconds</span>
         </div>
       </form>
 
-      <!-- Skip link -->
+      {# Skip link — proceeds directly to the default form without scanning. #}
       <div class="text-center mt-2">
         <a
           href="{% url 'onboarding_default_form' token=invite.token %}"

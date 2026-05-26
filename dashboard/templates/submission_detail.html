@@ -1,4 +1,7 @@
 {% extends "base.html" %}
+{# Submission detail / review page — context: submission, answers, linked_invite #}
+{# linked_invite connects the submission to a ProjectInvite for approve/reject controls. #}
+{# Restricted to admin and manager users (enforced in the view). #}
 
 {% block content %}
 <div class="max-w-5xl mx-auto space-y-6">
